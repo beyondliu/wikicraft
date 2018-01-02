@@ -11,6 +11,8 @@ define([
 			$scope.imgsPath  = config.wikiModPath + 'adi/assets/imgs/';
 			$scope.showModal = false;
 
+			var token = localStorage.getItem("satellizer_token");
+
 			var params_text = wikiblock.blockCache.block.content.replace(/```@adi\/js\/paracraftWorld/, "");
 			params_text = params_text.replace(/```/, "");
 
@@ -165,6 +167,15 @@ define([
 						text         : "",
 						require      : true,
 					},
+					btnLogo:{
+						is_leaf      : true,
+						type         : "link",
+						editable     : false,
+						is_mod_show  : true,
+						name         : "btnLogo",
+						text         : config.wikiModPath + 'adi/assets/imgs/down.png',
+						require      : true,
+					},
 				}
             }
 
@@ -172,7 +183,7 @@ define([
 			$scope.checkEngine = function () {
                 $scope.showModal=true;
 
-                window.open("paracraft://cmd/loadworld " + $scope.params.worldUrl.text);
+                window.open("paracraft:// usertoken=\"" + token + "\" cmd/loadworld " + $scope.params.worldUrl.text);
 			}
 			
 			$scope.clickDownload = function() {
@@ -183,7 +194,7 @@ define([
 			$scope.closeModal = function () {
                 $scope.showModal=false;
             }
-			
+
 			$scope.viewTimes = 0;
             var viewTimesUrl = "/api/mod/worldshare/models/worlds/getOneOpus";
             var params       = {opusId: $scope.params.opusId.text};
