@@ -20,7 +20,7 @@ define([
     'bluebird',
     'text!html/partial/imageManagerModal.html',
 ], function (app, angular, util, dataSource, Promise, htmlContent) {
-    app.registerController("imageManagerModalController", ['$scope', 'options', 'gitlab', function ($scope, options, gitlab) {
+    app.registerController("imageManagerModalController", ['$scope', '$sce', 'options', 'gitlab', function ($scope, $sce, options, gitlab) {
         var toggleNavCount = 0;
         $scope.currentNav = options.nav || 'myImages';
         $scope.title = options.title || '选择图片';
@@ -55,6 +55,24 @@ define([
 
         $scope.isItemChoosed = function(item) {
             return $scope.choosedItems.indexOf(item) > -1;
+        }
+
+        $scope.isUrlVideo = function(url) {
+            return /(mp4|mov|amv|avi)$/.test(url);
+        }
+
+        $scope.isUrlImage = function(url) {
+            return /(jpe?g|png|svg|gif|bmp)$/.test(url);
+        }
+
+        $scope.getUrlPreviewDOM = function(url) {
+            if ( $scope.isUrlVideo(url) )
+                return $sce.trustAsHtml('<video src="' + url + '"></video>');
+
+            if ( $scope.isUrlImage(url) )
+                return $sce.trustAsHtml('<img src="' + url + '" />');
+
+            return '';
         }
 
         function openMyImages() {
@@ -184,10 +202,9 @@ define([
             $scope.$dismiss('Canceled')
         }
 
-        
         function uploadImageFiles(files) {
             var files = files && files.length && Array.prototype.filter.call(files, function(file) {
-                return /^image/.test(file.type);
+                return /^(image|video)/.test(file.type);
             });
 
             if (!(files && files.length)) return Promise.reject('No files to upload!');
