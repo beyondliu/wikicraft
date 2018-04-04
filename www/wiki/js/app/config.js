@@ -5,6 +5,8 @@
 /* 程序配置模块 */
 
 (function () {
+    const ProdHost = "^keepwork.com$";
+    const ReleaseHost = "^release.keepwork.com$";
 	var wiki_config = window.wiki_config || {};
 	var localEnv = window.location.hostname.indexOf("localhost") >= 0 ? true : false;
 	var localVMEnv = localEnv && window.location.host != "localhost:63342";
@@ -13,9 +15,21 @@
 	var envIndex = hostname.indexOf(".dev.keepwork.com");
 	if (!wiki_config.webroot && envIndex > 0) {
 		pathPrefix = '/' + hostname.substring(0, envIndex) + '/';
-	}
+    }
+    var getEnv = function(){
+        var prodExp = new RegExp(ProdHost);
+        var releaseExp = new RegExp(ReleaseHost);
+        if (prodExp.test(hostname)) {
+            return "prod";
+        }
+        if (releaseExp.test(hostname)) {
+            return "release";
+        }
+        return "develop";
+    }
 	config = {
-		// --------------------------------------前端配置 START----------------------------------------------
+        // --------------------------------------前端配置 START----------------------------------------------
+        env: getEnv(),
 		localEnv:localEnv,                                                                                         // 是否本地调试环境
 		localVMEnv:localVMEnv,                                                                                     // 本地虚拟机环境
 		hostname:wiki_config.hostname ? wiki_config.hostname.split(":")[0] : window.location.hostname,             // url中的hostname, 优先取服务端给过来的(cname转发，客户端获取不到真实的hostname)
@@ -125,7 +139,7 @@
             if (trim_version == "MSIE9.0" || trim_version == "MSIE8.0" || trim_version == "MSIE7.0" || trim_version == "MSIE6.0") {
                 // alert("IE浏览器版本过低，请到指定网站去下载相关版本");
 				//然后跳到需要连接的下载网站
-				console.log(window.location);
+				// console.log(window.location);
 				if (window.location.pathname !== "/wiki/browers"){
 					window.location.href="/wiki/browers";
 				}

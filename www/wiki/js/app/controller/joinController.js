@@ -10,12 +10,57 @@ define([
     'helper/sensitiveWord',
     'text!html/join.html',
 ], function (app, util, storage, dataSource, sensitiveWord, htmlContent) {
-    app.registerController('joinController', ['$scope', '$auth', 'Account','modal', 'Message', function ($scope, $auth, Account, modal, Message) {
+    app.registerController('joinController', ['$scope', '$auth', '$interval', 'Account','modal', 'Message', function ($scope, $auth, $interval, Account, modal, Message) {
         //$scope.errMsg = "用户名或密码错误";
         var userThreeService = undefined;
         $scope.isModal=false;
         $scope.step=1;
         $scope.agree=true;
+        
+        $scope.registerInfo = {};
+        $scope.smsId = '';
+        $scope.registerCellPhoneSMSCodeWait = 0;
+        $scope.registerCellPhoneSMSCodeIsSending = false;
+        $scope.registerCellPhoneSMSCodeTimePromise && $interval.cancel($scope.registerCellPhoneSMSCodeTimePromise);
+
+        //安全验证
+        $scope.sendSMSCode = function () {
+            var cellphone = ($scope.cellphone || '').replace(/\s/g,'');
+            $scope.cellphone = cellphone;
+            $scope.cellphoneErrMsg = "";
+            $scope.smsCodeErrMsg = "";
+
+            if ( !/^[0-9]{11}$/.test($scope.cellphone) ) {
+                $scope.cellphoneErrMsg = "请先填写正确的手机号码";
+                return;
+            }
+            if ($scope.registerCellPhoneSMSCodeWait > 0){
+                return;
+            }
+            $scope.registerCellPhoneSMSCodeIsSending = true;
+            util.post(config.apiUrlPrefix + 'user/verifyCellphoneOne', {
+                cellphone: $scope.cellphone
+            },function(data){
+                $scope.registerCellPhoneSMSCodeIsSending = false;
+                $scope.smsId = data.smsId;
+
+                $scope.registerCellPhoneSMSCodeWait = 60;
+                $scope.registerCellPhoneSMSCodeTimePromise = $interval(function () {
+                    if($scope.registerCellPhoneSMSCodeWait <= 0){
+                        $interval.cancel($scope.registerCellPhoneSMSCodeTimePromise);
+                        $scope.registerCellPhoneSMSCodeTimePromise = null;
+                    }else{
+                        $scope.registerCellPhoneSMSCodeWait --;
+                    }
+                }, 1000, 100);
+                $scope.smsCode = "";
+                $scope.cellphoneErrMsg = "";
+            }, function (err) {
+                $scope.registerCellPhoneSMSCodeIsSending = false;
+                $scope.smsCodeErrMsg = err.message;
+                $scope.cellphoneErrMsg = "";
+            });
+        };
 
         function init() {
             userThreeService = storage.sessionStorageGetItem('userThreeService');
@@ -44,7 +89,7 @@ define([
             if (checks.username){
                 sensitiveWord.getAllSensitiveWords(username).then(function(results) {
                     var isSensitive = results && results.length;
-                    isSensitive && console.log("包含敏感词:" + results.join("|"));
+                    // isSensitive && console.log("包含敏感词:" + results.join("|"));
                     doCheckUsername(isSensitive, username);
                 });
             }
@@ -78,6 +123,53 @@ define([
                 }
             }
         };
+
+        // 新注册用户及老用户（个人信息md文件不存在处理）
+        var createProfilePages = function(userinfo, cb, errcb){
+            var userDataSource = dataSource.getUserDataSource(userinfo.username);
+            userDataSource.registerInitFinishCallback(function() {
+                var dataSourceInst = userDataSource.getDataSourceBySitename(userinfo.username);
+                var pagePrefix = '/'+ dataSourceInst.keepwrokUsername +'_datas/';
+                var profilePagesList = [
+                    {
+                        pagepath: pagePrefix + "profile.md",
+                        contentUrl: "text!html/profiles/profile.md"
+                    },
+                    {
+                        pagepath: pagePrefix + "site.md",
+                        contentUrl: "text!html/profiles/site.md"
+                    },
+                    {
+                        pagepath: pagePrefix + "contact.md",
+                        contentUrl: "text!html/profiles/contact.md"
+                    }
+                ];
+                var fnList = [];
+                profilePagesList.forEach(function(page){
+                    fnList.push(function(dataSourceInst, page){
+                        return function(cb, errcb){
+                            require([page.contentUrl], function(content){
+                                dataSourceInst.writeFile({
+                                    path: page.pagepath, 
+                                    content: content
+                                }, function(){
+                                    cb && cb();
+                                }, function(){
+                                });
+                            }, function(){
+                                errcb && errcb();
+                            })
+                        }
+                    }(dataSourceInst, page));
+                });
+                util.sequenceRun(fnList, undefined, function(){
+                    cb && cb();
+                }, function(){
+                    cb && cb();
+                });
+            });
+            
+        }
         
         // 注册
         $scope.register = function (type) {
@@ -88,10 +180,15 @@ define([
             $scope.errMsg = "";
             $scope.nameErrMsg = "";
             $scope.pwdErrMsg = "";
+            $scope.cellphoneErrMsg = "";
+            $scope.smsCodeErrMsg = "";
 
             var params = {
                 username: $scope.username? $scope.username.trim():"",
                 password: $scope.password? $scope.password.trim():"",
+                smsCode: $scope.smsCode,
+                smsId: $scope.smsId,
+                cellphone: $scope.cellphone
             };
 
             if(type=="other"){
@@ -102,8 +199,20 @@ define([
                 };
             }
 
+            if(!params.cellphone){
+                $scope.cellphoneErrMsg="*手机号不能为空"
+            }
+
+            if(!params.smsId){
+                $scope.smsCodeErrMsg="*请先发送验证码验证"
+            }
+
+            if(!params.smsCode){
+                $scope.smsCodeErrMsg="*验证码不能为空"
+            }
+
             if(!params.username){
-                $scope.nameErrMsg="*账户名为必填项";
+                $scope.nameErrMsg="*账户名不能为空";
                 $scope.$apply();
                 return;
             }
@@ -111,7 +220,7 @@ define([
             sensitiveWord.checkSensitiveWord(params.username, function (foundWords, replacedStr) {
                 if (foundWords.length > 0){
                     isSensitive = true;
-                    console.log("包含敏感词:" + foundWords.join("|"));
+                    // console.log("包含敏感词:" + foundWords.join("|"));
                 }
             });
             if (isSensitive){
@@ -148,7 +257,7 @@ define([
 
             var url = type == "other" ? "user/bindThreeService" : "user/register";
             util.http("POST", config.apiUrlPrefix + url, params, function (data) {
-                console.log("注册成功");
+                // console.log("注册成功");
                 $auth.setToken(data.token);
                 Account.setUser(data.userinfo);
                 var _go = function () {
@@ -158,15 +267,16 @@ define([
                         $scope.step++;
                     }
                 };
-                _go();
-                // if (data.isNewUser) {
-                //     createTutorialSite(data.userinfo, _go, _go);
-                // } else {
-                //
-                // }
+                // _go();
+                if (data.isNewUser) {
+                    // createTutorialSite(data.userinfo, _go, _go);
+                    createProfilePages(data.userinfo, _go, _go);
+                } else {
+                
+                }
             }, function (error) {
                 $scope.errMsg = error.message;
-                console.log($scope.errMsg );
+                // console.log($scope.errMsg );
             });
         };
 
@@ -252,22 +362,22 @@ define([
         }
 
         $scope.qqLogin = function () {
-            console.log("QQ登录");
+            // console.log("QQ登录");
             Authenticate("qq");
         }
 
         $scope.wechatLogin = function () {
-            console.log("微信登录");
+            // console.log("微信登录");
             Authenticate("weixin");
         }
 
         $scope.sinaWeiboLogin = function () {
-            console.log("新浪微博登录");
+            // console.log("新浪微博登录");
             Authenticate("xinlangweibo");
         }
 
         $scope.githubLogin = function () {
-            console.log("github登录");
+            // console.log("github登录");
             Authenticate("github");
         }
 

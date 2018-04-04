@@ -1,0 +1,116 @@
+<?npl
+--[[
+Title: pages_stars
+Author: ZhengJiabiao
+Date: 2018/1
+Desc: stars of a page
+]]
+
+
+include_once("./abstract/base.page")
+include_once("./validators.page")
+
+
+local pages_stars = inherit(models.abstract.base, gettable("models.pages_stars"))
+pages_stars.db_name = "pages_stars"
+local validators = models.validators:new()
+
+
+function pages_stars:ctor()
+    self:addfield("url", "string", false)  -- /user/site/page
+    self:addfield("siteUrl", "string", false) -- /user/site
+    self:addfield("starredUser", "number", false)  -- user who starred this page
+end
+
+
+function pages_stars:check_identity(params)
+    local allowed = util:check_identity({username=params.visitor})
+    if (not allowed) then
+        local message = "You are not allowed to do it"
+        errors:raise(403, message)
+    end
+end
+
+
+function pages_stars:star(params)
+    self:ensureAuthenticated()
+    self:check_identity(params)
+    local required_fields = {"url", "visitor"}
+    local params_error, message = validators.required_fields_validator(params, required_fields)
+    if (params_error) then errors:raise(400, message) end
+
+    local splited_url = commonlib.split(params.url, "/")
+    local username = splited_url[1] or ""
+    local sitename = splited_url[2] or ""
+    if (sitename ~= "") then sitename = "/" .. sitename end
+    local siteUrl = format("/%s%s", username, sitename)
+    local star = {url = params.url, starredUser = params.visitor, siteUrl = siteUrl}
+    self:db():findOne({["+url+starredUser"] = {star.url, star.starredUser}}, resume)
+    local err, result = yield()
+    if (result) then
+        self:db():deleteOne({_id = result._id}, resume)
+        err ,result = yield()
+        if (result) then result = {starred = false} end
+    else
+        self:db():insertOne({["+url+starredUser"] = {star.url, star.starredUser}}, star, resume)
+        err ,result = yield()
+        if (result) then result = {starred = true} end
+    end
+    self:db():count({url = params.url}, resume)
+    local _, starredCount = yield()
+    result.starredCount = starredCount
+    
+    return errors:wrap(err, result)
+end
+
+
+function pages_stars:get_starred_count_of_a_page(params)
+    self:db():count({url = params.url}, resume)
+    local err, starredCount = yield()
+    self:db():findOne({["+url+starredUser"] = {params.url, params.visitor}}, resume)
+    err, star_exist = yield()
+    local result = {starredCount = starredCount or 0}
+    if (star_exist) then
+        result.starred = true
+    else
+        result.starred = false
+    end
+    return result
+end
+
+
+function pages_stars:get_starred_pages_of_a_user(params)
+    local required_fields = {"username"}
+    local params_error, message = validators.required_fields_validator(params, required_fields)
+    if (params_error) then errors:raise(400, message) end
+
+    self:db():count({starredUser = params.username}, resume)
+    local err, count = yield()
+    if (count== 0) then return {} end
+
+    self:db():find({starredUser = params.username, _id={gt=0, limit=9999}}, resume)
+    local err, result = yield()
+    local pages = {}
+    if (result) then
+        local limit = 50
+        if (#result < 50) then limit = #result end
+        for i = 1, limit do
+            pages[(#pages) + 1] = result[(#result) - (limit - i)].url
+        end
+    end
+
+    return pages
+end
+
+
+function pages_stars:delete_page(params)
+    self:db():delete({url = params.url}, resume)
+    return yield()
+end
+
+
+function pages_stars:delete_website(params)
+    self:db():delete({siteUrl = params.siteUrl}, resume)
+    return yield()
+end
+

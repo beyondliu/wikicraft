@@ -29,7 +29,7 @@ define([
         var domainReg = new RegExp("^[\\d\\w][\\d\\w\\.]+$");
         //console.log(siteinfo);
         $scope.website = siteinfo;
-        $scope.tags=$scope.website.tags ? $scope.website.tags.split('|') : [];
+        // $scope.tags=$scope.website.tags ? $scope.website.tags.split('|') : [];
 
         function sendModifyWebsiteRequest() {
 			$scope.website.sitename = $scope.website.name;
@@ -90,7 +90,7 @@ define([
                 $scope.domain = "";
 			},function(data){
 				if (data.id==7) {
-					console.log("域名已存在");
+					// console.log("域名已存在");
 				}	
 			});
         };
@@ -117,7 +117,7 @@ define([
                 sensitiveWord.checkSensitiveWord(tagName, function (foundWords, replacedStr) {
                     if (foundWords.length > 0){
                         isSensitive = true;
-                        console.log("包含敏感词:" + foundWords.join("|"));
+                        // console.log("包含敏感词:" + foundWords.join("|"));
                         return false;
                     }
                 });
@@ -156,32 +156,26 @@ define([
             var isSensitive = false;
 
             if (($scope.website.sensitiveWordLevel & 2) <= 0){
-                $.each(checkSensitives, function (index,word) {
-                    if (!word || word == ""){
-                        return true;
-                    }
-                    sensitiveWord.checkSensitiveWord(word, function (foundWords, replacedStr) {
-                        if (foundWords.length > 0){
-                            isSensitive = true;
-                            console.log("包含敏感词:" + foundWords.join("|"));
-                            console.log(replacedStr);
-                            return false;
-                        }
-                    });
+                sensitiveWord.getAllSensitiveWords(checkSensitives).then(function(results) {
+                    var isSensitive = results && results.length;
+                    trySaveModify(isSensitive);
                 });
             }
-            
-            if (isSensitive){
-                $scope.websiteErr = "您输入的内容不符合互联网安全规范，请修改";
-                return;
+
+            var trySaveModify = function(isSensitive) {
+                if (isSensitive){
+                    $scope.websiteErr = "您输入的内容不符合互联网安全规范，请修改";
+                    util.$apply();
+                    return;
+                }
+                
+                // if (!/^[\d\w-(\u4e00-\u9fff)]+$/.test($scope.website.defaultPage)) {
+                //     $scope.defaultPageErrMsg = "域名格式错误";
+                //     return;
+                // }
+                
+                sendModifyWebsiteRequest();
             }
-            
-            // if (!/^[\d\w-(\u4e00-\u9fff)]+$/.test($scope.website.defaultPage)) {
-            //     $scope.defaultPageErrMsg = "域名格式错误";
-            //     return;
-            // }
-            
-            sendModifyWebsiteRequest();
         };
 
 		function initGroup() {
@@ -309,7 +303,7 @@ define([
             $scope.deleting = group;
             $scope.deleting.type = type;
             $("#deleteModal").modal("show");
-            console.log($scope.deleting);
+            // console.log($scope.deleting);
         };
 
 		$scope.deleteShareGroup = function(group) {
@@ -432,7 +426,7 @@ define([
             util.post(config.apiUrlPrefix + 'data_source/get', {username:name, apiBaseUrl:siteDataSource.apiBaseUrl}, function(dataSourceUser) {
                 if (!dataSourceUser || dataSourceUser.length == 0) {
                     Message.info("用户不在此站点的数据源中, 不可添加!!!");
-                    console.log("数据源用户不存在");
+                    // console.log("数据源用户不存在");
                     if (users.length>0){
                         saveUser(users.shift(), group, users);
                     }else{
@@ -555,7 +549,7 @@ define([
         }
 		
 		$scope.changeDataSource = function() {
-			console.log($scope.dataSourceName);
+			// console.log($scope.dataSourceName);
 		}
 
         function init() {

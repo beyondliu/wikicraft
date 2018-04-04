@@ -14,8 +14,11 @@ define([
         //console.log("headerController");
         //$scope.isLogin = Account.isAuthenticated();
         const SearchRangeText = ["全部内容", "当前站点", "我的网站"];
+        const FoldPostfix = "/";
         $scope.urlObj = {};
         $scope.isIconShow = !util.isOfficialPage();
+        var pageDetail = util.parseUrl();
+        $scope.isUserPage = (pageDetail.username && pageDetail.pathname.substring(1) == pageDetail.username);
         $scope.trendsType = "organization";
         $scope.isCollect=false;//是否已收藏当前作品
         $scope.searchRange = [];
@@ -60,6 +63,23 @@ define([
             }
         }
 
+        var initPageInfo = function(){
+            var url = pageDetail.pathname;
+            var visitor = $scope.user && $scope.user.username || "";
+            util.get(config.apiUrlPrefix + "pages/getDetail", {
+                url: url,
+                visitor: visitor
+            }, function(data){
+                $scope.isCollect = data.starred;
+                $scope.pageFansCount = data.starredCount;
+            })
+        }
+
+        var initPagePath = function(){
+            var pathUrl = pageDetail.pagepath;
+            $scope.urlItemList = pathUrl.split("/");
+        }
+
         function init() {
             $scope.isJoin = (window.location.pathname == "/wiki/join") ? true : false;
             $scope.isSearch = (window.location.pathname == "/wiki/search") ? true : false;
@@ -96,6 +116,10 @@ define([
             }
 
             initSearchRange();
+
+            initPageInfo();
+
+            initPagePath();
             // var container=document.getElementById("js-prev-container");
             // container.style.overflow="visible";
         }
@@ -119,28 +143,69 @@ define([
                 return;
             util.post(config.apiUrlPrefix + 'website/getAllByUsername', {username: $scope.urlObj.username}, function (data) {
                 $scope.userSiteList = data || [];
-            });
+            }, undefined, false);
         }
 
-        $scope.clickPageList = function () {
+        $scope.clickPageList = function (index) {
             if ($scope.urlObj.username == "wiki")
                 return;
             
             var userDataSource = dataSource.getUserDataSource($scope.urlObj.username)
             var currentDataSource = userDataSource && userDataSource.getDataSourceBySitename($rootScope.siteinfo.name);
             if (!currentDataSource) {
-                console.log(userDataSource,$rootScope.siteinfo._id );
+                // console.log(userDataSource,$rootScope.siteinfo._id );
                 return;
             }
-            
-            currentDataSource.getTree({path:'/' + $scope.urlObj.username + '/' + $scope.urlObj.sitename}, function (data) {
-                $scope.userSitePageList = data || [];
+            $scope.userSitePageList = [];
+            var selectPath = $scope.urlItemList.slice(0, index);
+            var path = selectPath.join("/");
+            var pagesObj = {};
+            currentDataSource.getTree({
+                path:path, 
+                recursive: true,
+                isShowLoading: true
+            }, function (data) {
+                var pageIndex = 0;
+                var conflictPages = [];
+                $scope.userSitePageList = data.filter(function(page){
+                    if (new RegExp("^(.gitignore|_header|_footer|_sidebar|_theme)$").test(page.pagename)) {
+                        return false;
+                    }
+
+                    var pageUrlArr = page.url.split("/");
+                    var pageUrlLen = pageUrlArr.length;
+
+                    if (pageUrlLen >= (index + 2)) { //文件夹
+                        page.foldname = pageUrlArr[index] + " " + FoldPostfix; // 从url获取文件夹名
+                        page.foldpath = pageUrlArr.splice(0, pageUrlLen-1).join("/");
+                        page.isFold = true;
+                    }
+
+                    if (pagesObj[page.foldname] && pagesObj[page.foldname].isFold) { // 文件夹已记录过
+                        switch (page.pagename) {
+                            case "index":
+                                conflictPages.push({
+                                    index: pagesObj[page.foldname].index,
+                                    pageDetail: page
+                                });
+                                break;
+                        }
+                        return false;
+                    }
+                    
+                    page.index = pageIndex ++;
+                    pagesObj[page.foldname || page.pagename] = page;
+                    return true;
+                });
+                
+                conflictPages.forEach(function(conflictPage){
+                    $scope.userSitePageList[conflictPage.index] = conflictPage.pageDetail;
+                });
             });
         }
 
         $scope.selectPage = function (page) {
-            $scope.urlObj.pagename = page.pagename;
-            $scope.goUrlSite();
+            window.location.href = page.url;
         }
 
         $scope.goUrlSite = function () {
@@ -217,7 +282,7 @@ define([
         // 页面编辑页面
         $scope.goWikiEditorPage = function () {
             storage.sessionStorageSetItem("urlObj", util.parseUrl());
-            console.log(storage.sessionStorageGetItem("urlObj"));
+            // console.log(storage.sessionStorageGetItem("urlObj"));
             util.go("wikieditor");
         }
 
@@ -234,10 +299,10 @@ define([
                     size: 'lg',
                     backdrop: true
                 }, function (result) {
-                    console.log(result);
+                    // console.log(result);
                     // nowPage.replaceSelection(login.content);
                 }, function (result) {
-                    console.log(result);
+                    // console.log(result);
                 });
             } else {
                 util.go("home");
@@ -284,7 +349,7 @@ define([
 		};
 
         $scope.goUserCenterPage = function (contentType, subContentType) {
-            console.log(contentType, subContentType);
+            // console.log(contentType, subContentType);
             if (util.snakeToHump(window.location.pathname) == '/wiki/userCenter') {
                 $rootScope.$broadcast('userCenterContentType', contentType);
                 subContentType && $rootScope.$broadcast('userCenterSubContentType', subContentType);
@@ -298,7 +363,7 @@ define([
 		$scope.logout = function () {
 			Account.logout();
 			$rootScope.isLogin = false;
-			console.log(window.location.pathname);
+			// console.log(window.location.pathname);
 			if (/^\/wiki/.test(window.location.pathname)){
 				util.go('home');
 			}
@@ -334,24 +399,32 @@ define([
 
         // 收藏作品
         $scope.doWorksFavorite=function (event,doCollect) {
-            var worksFavoriteRequest = function(isFavorite) {
-                if (!$rootScope.siteinfo) {
-                    return;
-                }
-                var params = {
-                    userId: $scope.user._id,
-					siteId: $rootScope.siteinfo._id
-                };
-
-                var url = config.apiUrlPrefix + 'user_favorite/' + (isFavorite ? 'favoriteSite' : 'unfavoriteSite');
-                util.post(url, params, function () {
-                    Message.info(isFavorite ? '作品已收藏' : '作品已取消收藏');
+            if (!Account.isAuthenticated()) {
+                Message.info("登录后才能关注");
+                modal('controller/loginController', {
+                    controller: 'loginController',
+                    size: 'lg',
+                    backdrop: true
+                }, function (result) {
+                    console.log(result);
+                    $scope.doWorksFavorite(event, doCollect);
+                    // nowPage.replaceSelection(login.content);
+                }, function (result) {
+                    console.log(result);
                 });
-                if (isFavorite){
-                    $scope.userFansCount++;
-                }else{
-                    $scope.userFansCount--;
-                }
+                return; // 登录后才能关注
+            }
+            var worksFavoriteRequest = function(isFavorite) {
+                console.log(pageDetail);
+                util.post(config.apiUrlPrefix + "pages/star", {
+                    url: pageDetail.pathname,
+                    visitor: $scope.user.username
+                }, function(data){
+                    $scope.isCollect = data.starred;
+                    $scope.pageFansCount = data.starredCount;
+                }, function(err){
+                    console.log(err);
+                });
             };
 
             if (doCollect){

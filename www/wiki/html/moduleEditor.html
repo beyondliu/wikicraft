@@ -1,9 +1,70 @@
 <style>
     .module-editor .nav-tabs {
         background-color: #F2F2F2;
-        padding-right: 60px;
+        padding-right: 30px;
         z-index: 2;
         position: relative;
+    }
+
+    .module-editor .tab-content {
+        height: 250px;
+        box-sizing: border-box;
+        border: 2px solid #3977AD;
+    }
+
+    .module-editor .nav-tabs .nav-item-left {
+        position: relative;
+        margin-left: 14px;
+    }
+
+    .module-editor .nav-tabs .nav-item-right {
+        margin-left: 20px;
+    }
+
+    .module-editor .nav-tabs .nav-item-left.active {
+        z-index: 2;
+    }
+
+    .module-editor .nav-tabs .nav-item-left a,
+    .module-editor .nav-tabs .nav-item-left a:hover,
+    .module-editor .nav-tabs .nav-item-left a:active {
+        border: 0 !important;
+    }
+
+    .module-editor .nav-tabs .nav-item-left:before, 
+    .module-editor .nav-tabs .nav-item-left:after {
+        content: '';
+        display: block;
+        position: absolute;
+        bottom: 0;
+        width: 0;
+        border-top-width: 14px;
+        border-bottom-width: 14px;
+        border-left-width: 7px;
+        border-right-width: 7px;
+        border-style: solid;
+        border-top-color: transparent;
+        border-bottom-color: #fff;
+    }
+    .module-editor .nav-tabs .nav-item-left:before {
+        left: -14px;
+        border-right-color: #fff;
+        border-left-color: transparent;
+    }
+    .module-editor .nav-tabs .nav-item-left:after {
+        right: -14px;
+        border-left-color: #fff;
+        border-right-color: transparent;
+    }
+    .module-editor .nav-tabs .nav-item-left.active:before,
+    .module-editor .nav-tabs .nav-item-left.active:after {
+        border-bottom-color: #3977AD;
+    }
+    .module-editor .nav-tabs .nav-item-left.active:before {
+        border-right-color: #3977AD;
+    }
+    .module-editor .nav-tabs .nav-item-left.active:after {
+        border-left-color: #3977AD;
     }
 
     .module-editor .nav-tabs>li>a {
@@ -13,7 +74,7 @@
         margin-right: 0;
         color: #333;
         background-color: #FFFF;
-        border: 1px solid #DDD;
+        border: 0;
         border-radius: 0;
     }
 
@@ -46,8 +107,47 @@
         background-color: #FFF;
     }
 
+    .module-editor .attr-content-switch {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .module-editor .attr-content-input {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .module-editor .attr-content-input label {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        white-space: nowrap;
+        align-items: center;
+        font-weight: 400;
+    }
+
+    .module-editor .attr-content-input input {
+        margin-left: 10px;
+    }
+
+    .module-editor .attr-content-url {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .module-editor .attr-content-url-inner {
+        width: 100%;
+    }
+
+    .module-editor .attr-content-url .link-select{
+        padding-top: 10px;
+    }
+
     .module-editor .attr-item.active .attr-content {
-        border-color: #F16C24;
+        border-color: #F16C24;dd
     }
 
     .module-editor .attr-item.active .header {
@@ -130,31 +230,41 @@
     .module-editor .link-dropdown .dropdown-menu {
         min-width: unset;
         width: 120px;
-        padding: 5px 7px;
+        padding: 0;
         line-height: 1;
         font-size: 14px;
         margin-top: 4px;
         cursor: pointer;
     }
 
-    .module-editor .link-dropdown .btn-default {
+    .module-editor .link-dropdown .dropdown-menu li{
+        padding: 5px 7px;
+    }
+
+    .module-editor .link-dropdown .dropdown-menu li:hover{
+        background-color: #D9EDFF;
+    }
+
+    .module-editor .link-dropdown .btn {
         width: 120px;
         height: 25px;
         padding: 0 7px;
         font-size: 14px;
-        color: #999;
+        border: 1px solid;
         text-align: left;
         position: relative;
-        border-color: #DDD;
         box-shadow: none;
         background-color: transparent;
     }
 
-    .module-editor .link-dropdown.open .btn-default {
-        border-color: #3977AD;
+    .module-editor .link-dropdown .btn-primary{
         color: #3977AD;
-        background-color: transparent;
-        box-shadow: none;
+        border-color: #3977AD;
+    }
+
+    .module-editor .link-dropdown .btn-primary[disabled]{
+        color: #999;
+        border-color: #DDD;
     }
 
     .module-editor .link-dropdown .glyphicon-chevron-down {
@@ -167,14 +277,14 @@
     .module-editor .swiper-button-next,
     .module-editor .swiper-button-prev {
         width: 60px;
-        height: 250px;
+        height: 246px;
         background-color: #FFF;
         top: 0;
         background-image: none;
         margin-top: 0;
         right: 0;
         text-align: center;
-        line-height: 250px;
+        line-height: 246px;
         opacity: 1;
     }
 
@@ -424,50 +534,85 @@
         color: #333;
     }
 
-    .module-editor .knowledge-tabpane p {
-        margin-bottom: 20px;
+    .botui-app-container{
+        width: 100%;
+        height: 200px;
     }
 
-    .module-editor .knowledge-tabpane a {
-        border: 1px solid #3977AD;
-        padding: 6px 0;
-        width: 200px;
+    .iconfont.icon-shouqi1 {
         display: inline-block;
-        text-align: center;
+    }
+
+    .iconfont.icon-shouqi1.down {
+        transform: rotateZ(180deg);
+    }
+
+    .att-edit-box {
+        z-index: 4;
+        background-color: #FFF;
+        border-left: 1px solid #EEE;
+        padding: 0;
+        z-index: 1;
+    }
+
+    .att-edit-box.view-is-open {
+        height: 280px;
+    }
+
+    .att-edit-box.view-is-close {
+        height: 30px;
+        border-bottom: 2px solid #3977AD;
     }
 </style>
-<div ng-controller="moduleEditorController" class="module-editor">
+<div ng-controller="moduleEditorController" class="module-editor att-edit-box" ng-class="{'view-is-open': viewIsOpen, 'view-is-close': !viewIsOpen}">
     <!-- Nav tabs -->
     <ul class="nav nav-tabs" role="tablist">
-        <li role="presentation" ng-show="show_type == 'knowledge' || !show_type" ng-class="{true: 'active'}[show_type == 'knowledge' || !show_type]"
-            ng-click="tabTo('knowledge')">
+        <li role="presentation" 
+            ng-show="show_type == 'knowledge' || !show_type"
+            class="nav-item-left"
+            ng-class="{true: 'active'}[show_type == 'knowledge' || !show_type]"
+            ng-click="tabTo('knowledge')"
+        >
             <a href="#Knowledge" aria-controls="Knowledge" role="tab" data-toggle="tab" translate="知识库"></a>
         </li>
-        <li role="presentation" ng-hide="show_type == 'knowledge' || !show_type" ng-class="{true: 'active'}[show_type == 'editor']"
-            ng-click="tabTo('editor')">
+        <li role="presentation" 
+            ng-hide="show_type == 'knowledge' || !show_type"
+            class="nav-item-left"
+            ng-class="{true: 'active'}[show_type == 'editor']"
+            ng-click="tabTo('editor')"
+        >
             <a href="#Attr" aria-controls="Attr" role="tab" data-toggle="tab" translate="属性"></a>
         </li>
-        <li role="presentation" ng-hide="show_type == 'knowledge' || !show_type" ng-class="{true: 'active'}[show_type == 'design']"
-            ng-click="tabTo('design')">
+        <li role="presentation" 
+            ng-hide="show_type == 'knowledge' || !show_type || !hasStyle"
+            class="nav-item-left"
+            ng-class="{true: 'active'}[show_type == 'design']"
+            ng-click="tabTo('design')"
+        >
             <a href="#StyleSetting" aria-controls="StyleSetting" role="tab" data-toggle="tab" translate="样式"></a>
         </li>
+
+        <li ng-click="viewIsOpen = !viewIsOpen" class="pull-right nav-item-right">
+            <a class="btn">
+                <i class="iconfont icon-shouqi1" ng-class="{up: !viewIsOpen, down: viewIsOpen}"></i>
+                {{viewIsOpen ? "隐藏" : "展开" | translate}}
+            </a>
+        </li>
         <!-- 删除模块按钮 -->
-        <li ng-hide="show_type == 'knowledge' || !show_type" ng-click="deleteMod()" class="pull-right">
+        <li ng-hide="show_type == 'knowledge' || !show_type" ng-click="deleteMod()" class="pull-right nav-item-right">
             <a class="btn">
                 <i class="iconfont icon-bianjiqi-shanchu"></i>{{"删除" | translate}}</a>
         </li>
     </ul>
 
     <!-- Tab panes -->
-    <div class="tab-content">
+    <div class="tab-content" ng-hide="!viewIsOpen">
         <div role="tabpanel" class="tab-pane knowledge-tabpane" id="Knowledge" ng-class="{true: 'active'}[show_type == 'knowledge' || !show_type]">
-            <p>
-                <a href="http://keepwork.com/official/help/index" target="_blank">keepwork帮助中心</a>
-            </p>
-            <p>
-                <a href="http://keepwork.com/official/help/yufa" target="_blank">markdown基础语法</a>
-            </p>
-            <!-- <p>{{lineContent ? lineContent : "知识库中暂无相关推荐内容" | translate}}</p> -->
+            <div id="knowlege-agent" class="botui-app-container">
+                <bot-ui></bot-ui>
+            </div>
+            <div id="knowledge-pattern">
+            </div>
         </div>
         <div role="tabpanel" class="tab-pane" ng-class="{true: 'active'}[show_type == 'editor']" id="Attr">
             <div id="editorSwiper" class="editor-swiper swiper-container swiper-container-horizontal">
@@ -479,7 +624,26 @@
                                 {{(!data.data.is_mod_hide) ? "开" : "关" | translate}}
                             </div>
                         </div>
-                        <div class="attr-content">
+                        <div class="attr-content attr-content-{{data.type}}">
+                            <div ng-if="data.type == 'switch'">
+                                {{ data.desc }}
+                            </div>
+                            <div ng-if="data.type == 'input'">
+                                <label>
+                                    <span>{{ data.label }}</span>
+                                    <input id="{{data.id}}" type="text" ng-change="applyAttrChange()" ng-model="data.data.text">
+                                </label>
+                            </div>
+                            <div class="attr-content-{{data.type}}-inner" ng-if="data.type == 'url'">
+                                <div>{{ data.label }}</div>
+                                <ui-select class="link-select card-input" ng-model="data.data.href" reset-search-input="false" on-select="urlSelected($item, $model, data.data, 'href')">
+                                    <ui-select-match allow-clear="false" placeholder="{{data.data.href}}">{{data.data.href}}</ui-select-match>
+                                    <ui-select-choices repeat="file in (filelist | filter: $select.search) track by $index" refresh-delay="0" refresh="userInputLink($select, data.data)"
+                                        position="up">
+                                        <span ng-bind="file.url"></span>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
                             <div ng-if="data.type == '_text_'">
                                 <input id="{{data.id}}" class="card-input" type="text" ng-change="applyAttrChange()" ng-model="data.data.text" placeholder="文本">
                             </div>
@@ -490,7 +654,7 @@
 
                                 <input type="text" class="card-input" ng-change="applyAttrChange()" ng-model="data.data.href" placeholder="链接">
                                 <div class="dropdown link-dropdown">
-                                    <button id="dLabel-text" class="btn btn-default" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                                    <button id="dLabel-text" class="btn btn-primary" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
                                         ng-disabled="!data.data.href || data.data.href == ''">
                                         {{getLinkTarget(data.data) | translate}}
                                         <span class="glyphicon glyphicon-chevron-down"></span>
@@ -523,8 +687,8 @@
                                 <button class="btn menu-btn" ng-click="openMenuEditor(data.data)" translate="打开菜单编辑器"></button>
                             </div>
                             <!-- 绘图板编辑 -->
-                            <div ng-if="data.type == 'diagram'" class="center-center">
-                                <button class="btn menu-btn" ng-click="openBoard(data.data)" translate="打开绘图板"></button>
+                            <div ng-if="data.type == 'modal'" class="center-center">
+                                <button class="btn menu-btn" ng-click="openModal(data.data)" translate="{{data.button_name}}"></button>
                             </div>
                             <!-- 多行文本 -->
                             <div ng-if="data.type == 'multiText'">
@@ -533,9 +697,9 @@
                                     <i class="pull-right iconfont icon-enlarge" ng-click="openMultiText(data.data, 'text')"></i>
                                 </div>
                                 <div class="card-input-box">
-                                    <!-- <input type="text" 
-                                        class="card-input" 
-                                        ng-change="applyAttrChange();setShowResult(true)" 
+                                    <!-- <input type="text"
+                                        class="card-input"
+                                        ng-change="applyAttrChange();setShowResult(true)"
                                         ng-model="data.data.href" placeholder="链接"
                                         ng-blur="setShowResult(false)"
                                     > -->
@@ -554,7 +718,7 @@
                                     </div> -->
                                 </div>
                                 <div class="dropdown link-dropdown">
-                                    <button id="dLabel-multi-text" class="btn btn-default" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                                    <button id="dLabel-multi-text" class="btn btn-primary" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
                                         ng-disabled="!data.data.href || data.data.href == ''">
                                         {{getLinkTarget(data.data) | translate}}
                                         <span class="glyphicon glyphicon-chevron-down"></span>
@@ -643,7 +807,7 @@
     <!-- <div class="backdrop" ng-show="showResult"></div> -->
 </div>
 
-<!-- 
+<!--
 <style>
 .input_item_container {
 	margin: 10px 0px;
@@ -716,8 +880,8 @@
 				<div style="transform:scale(0.15,0.2); transform-origin:left top;">
 					<div wiki-html="design_view" ></div>
 				</div>
-				<div><button ng-click="click_apply_design($index)">APPLY</button></div>	
-			</div>	
+				<div><button ng-click="click_apply_design($index)">APPLY</button></div>
+			</div>
 		</div>
 	</div>
 </div>

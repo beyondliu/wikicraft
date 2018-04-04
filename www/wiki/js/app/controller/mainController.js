@@ -210,7 +210,7 @@ define([
                 
                 $rootScope.getBodyStyle = function () {
                     return {
-                        "padding-top": $rootScope.frameHeaderExist ? "52px" : "0px",
+                        "padding-top": ($rootScope.frameHeaderExist && !$rootScope.isHeaderScroll) ? "52px" : "0px",
                     };
                 }
 
@@ -276,6 +276,7 @@ define([
                 $rootScope.pageinfo = undefined;
                 $rootScope.tplinfo = undefined;
                 if (urlObj.username && urlObj.sitename) {
+                    $rootScope.isHeaderScroll = true;
                     util.http("POST", config.apiUrlPrefix + "website/getDetailInfo", {
                         username: urlObj.username,
                         sitename: urlObj.sitename,
@@ -304,6 +305,7 @@ define([
 							}
 							userDataSource.registerInitFinishCallback(function () {
 								var currentDataSource = dataSource.getDataSource($rootScope.pageinfo.username, $rootScope.pageinfo.sitename);
+                                $scope.user && Account.setDataSourceToken(currentDataSource);
 								var renderContent = function (content) {
 									$rootScope.$broadcast('userpageLoaded',{});
                                     if (content && (data.siteinfo.sensitiveWordLevel & 1) <= 0){
@@ -322,7 +324,7 @@ define([
 								}
 
 								//console.log(currentDataSource);
-								currentDataSource.getRawContent({path:urlObj.pagepath + config.pageSuffixName}, function (data) {
+								currentDataSource.getRawContent({path:urlObj.pagepath + config.pageSuffixName, token: currentDataSource.dataSourceToken}, function (data) {
 									//console.log(data);
 									//console.log("otherUsername:", urlObj.username);
 									storage.sessionStorageSetItem("otherUsername", urlObj.username);
@@ -354,7 +356,7 @@ define([
 							callback();
 						}
                     },function (err) {
-                        console.log(err);
+                        // console.log(err);
                         var errContent = notfoundHtmlContent;
                         util.html('#__UserSitePageContent__', errContent, $scope);
                     });
@@ -371,7 +373,7 @@ define([
 
                 var urlObj = $rootScope.urlObj;
                 // 置空用户页面内容
-                console.log(urlObj);
+                // console.log(urlObj);
                 setWindowTitle(urlObj);
 				
 				if (!util.isEditorPage()) {

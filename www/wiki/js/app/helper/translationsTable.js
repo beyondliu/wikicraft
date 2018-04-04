@@ -1497,7 +1497,7 @@ define([], function () {
         {
             "_key": "创建的网站",
             "zh-cn": "创建的网站",
-            "en": "Created web site"
+            "en": "Created websites"
         },
         {
             "_key": "暂未创建网站",
@@ -1745,9 +1745,29 @@ define([], function () {
             "en": "Enter the cell phone number:"
         },
         {
+            "_key": "输入手机号",
+            "zh-cn": "输入手机号",
+            "en": "Enter the cell phone number"
+        },
+        {
+            "_key": "手机号",
+            "zh-cn": "手机号",
+            "en": "Cellphone"
+        },
+        {
             "_key": "短信验证码：",
             "zh-cn": "短信验证码：",
             "en": "SMS authentication code:"
+        },
+        {
+            "_key": "短信验证码",
+            "zh-cn": "短信验证码",
+            "en": "SMS authentication code"
+        },
+        {
+            "_key": "验证码",
+            "zh-cn": "验证码",
+            "en": "Code"
         },
         {
             "_key": "确认",
@@ -2240,6 +2260,11 @@ define([], function () {
             "en": "Are you sure to remove {{ groupname }} group?",
         },
         {
+            "_key": "Remove_Confirm_Msg",
+            "zh-cn": "确定删除 {{ deleteItemName }} ？",
+            "en": "Are you sure to remove {{ deleteItemName }} ?"
+        },
+        {
             "_key": "右对齐",
             "zh-cn": "右对齐",
             "en": "align right"
@@ -2273,6 +2298,11 @@ define([], function () {
             "_key": "粉丝",
             "zh-cn": "粉丝",
             "en": "vermicelli made from bean starch, etc."
+        },
+        {
+            "_key": "profile_fans",
+            "zh-cn": "粉丝",
+            "en": "Fans"
         },
         {
             "_key": "恭喜您！",
@@ -2850,6 +2880,16 @@ define([], function () {
             "en": "glance over"
         },
         {
+            "_key": "隐藏",
+            "zh-cn": "隐藏",
+            "en": "Hide"
+        },
+        {
+            "_key": "展开",
+            "zh-cn": "展开",
+            "en": "Open"
+        },
+        {
             "_key": "拆分",
             "zh-cn": "拆分",
             "en": "split"
@@ -3068,6 +3108,196 @@ define([], function () {
             "_key": "打开绘图板",
             "zh-cn": "打开绘图板",
             "en": "Open Diagram"
+        },
+        {
+            "_key": "未知地点",
+            "zh-cn": "未知地点",
+            "en": "Unknown"
+        },
+        {
+            "_key": "已关注",
+            "zh-cn": "已关注",
+            "en": "Concern"
+        },
+        {
+            "_key": "继续关注",
+            "zh-cn": "继续关注",
+            "en": "ReConcern"
+        },
+        {
+            "_key": "empty_content",
+            "zh-cn": "尚未发表相关内容，请添加",
+            "en": "No relevant content has been published. Please add."
+        },
+        {
+            "_key": "技能",
+            "zh-cn": "技能",
+            "en": "Skills"
+        },
+        {
+            "_key": "经历",
+            "zh-cn": "经历",
+            "en": "Experiences"
+        },
+        {
+            "_key": "认证",
+            "zh-cn": "认证",
+            "en": "Certifications"
+        },
+        {
+            "_key": "活跃度",
+            "zh-cn": "活跃度",
+            "en": "Activeness"
+        },
+        {
+            "_key": "置顶内容",
+            "zh-cn": "置顶内容",
+            "en": "Stick websites"
+        },
+        {
+            "_key": "点赞",
+            "zh-cn": "点赞",
+            "en": "Like"
+        },
+        {
+            "_key": "取消点赞",
+            "zh-cn": "取消点赞",
+            "en": "Undo Like"
+        },
+        {
+            "_key": "上移",
+            "zh-cn": "上移",
+            "en": "Shift Up"
+        },
+        {
+            "_key": "下移",
+            "zh-cn": "下移",
+            "en": "Shift Down"
+        },
+        {
+            "_key": "新增作品",
+            "zh-cn": "新增作品",
+            "en": "Add Work"
+        },
+        {
+            "_key": "修改作品",
+            "zh-cn": "修改作品",
+            "en": "Modify Work"
+        },
+        {
+            "_key": "作品封面",
+            "zh-cn": "作品封面",
+            "en": "Cover"
+        },
+        {
+            "_key": "上传封面",
+            "zh-cn": "上传封面",
+            "en": "Upload Cover"
+        },
+        {
+            "_key": "作品名",
+            "zh-cn": "作品名",
+            "en": "Work Name"
+        },
+        {
+            "_key": "作品链接",
+            "zh-cn": "作品链接",
+            "en": "Work Link"
+        },
+        {
+            "_key": "作品简介",
+            "zh-cn": "作品简介",
+            "en": "Introduction"
+        },
+        {
+            "_key": "添加技能",
+            "zh-cn": "添加技能",
+            "en": "Add Skill"
+        },
+        {
+            "_key": "修改技能",
+            "zh-cn": "修改技能",
+            "en": "Modify Skill"
+        },
+        {
+            "_key": "技能名称",
+            "zh-cn": "技能名称",
+            "en": "Skill Name"
+        },
+        {
+            "_key": "熟练度",
+            "zh-cn": "熟练度",
+            "en": "Degree"
+        },
+        {
+            "_key": "选择熟练度",
+            "zh-cn": "选择熟练度",
+            "en": "Select Degree"
+        },
+        {
+            "_key": "新增经历",
+            "zh-cn": "新增经历",
+            "en": "Add Experience"
+        },
+        {
+            "_key": "修改经历",
+            "zh-cn": "修改经历",
+            "en": "Modify Experience"
+        },
+        {
+            "_key": "简介",
+            "zh-cn": "简介",
+            "en": "Introduction"
+        },
+        {
+            "_key": "展示网址",
+            "zh-cn": "展示网址",
+            "en": "Showing Link"
+        },
+        {
+            "_key": "开始时间",
+            "zh-cn": "开始时间",
+            "en": "Start Date"
+        },
+        {
+            "_key": "结束时间",
+            "zh-cn": "结束时间",
+            "en": "End Date"
+        },
+        {
+            "_key": "请输入网址",
+            "zh-cn": "请输入网址",
+            "en": "Please Enter Url"
+        },
+        {
+            "_key": "新增认证",
+            "zh-cn": "新增认证",
+            "en": "Add Certification"
+        },
+        {
+            "_key": "修改认证",
+            "zh-cn": "修改认证",
+            "en": "Modify Certification"
+        },
+        {
+            "_key": "获得时间",
+            "zh-cn": "获得时间",
+            "en": "Gain Date"
+        },
+        {
+            "_key": "技能名称需小于10位",
+            "zh-cn": "技能名称需小于10位",
+            "en": "Skill Name Length Should Less Than 10"
+        },
+        {
+            "_key": "该技能已存在",
+            "zh-cn": "该技能已存在",
+            "en": "This skill already exists"
+        },
+        {
+            "_key": "不可为空",
+            "zh-cn": "不可为空",
+            "en": " Is Required"
         }
     ];
 
@@ -3085,7 +3315,7 @@ define([], function () {
         }
     });
 
-    console.log(translationsTable);
+    // console.log(translationsTable);
 
     return translationsTable;
 })
