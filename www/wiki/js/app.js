@@ -15,11 +15,12 @@ define([
 	//console.log("app");
 	var app = angular.module('webapp', ['ui.bootstrap', 'ui.select', 'pascalprecht.translate', 'satellizer', 'ngSanitize', 'toggle-switch',]).run(function () {
 		config.angularBootstrap = true;
-	});
+  });
+
 
 	app.registerController = app.controller;
 
-	app.config(['$controllerProvider', '$httpProvider', '$authProvider','$locationProvider', '$translateProvider', function ($controllerProvider, $httpProvider, $authProvider, $locationProvider, $translateProvider) {
+	app.config(['$controllerProvider', '$httpProvider', '$authProvider','$locationProvider','$translateProvider','$compileProvider', function ($controllerProvider, $httpProvider, $authProvider, $locationProvider, $translateProvider, $compileProvider) {
 		//$locationProvider.hashPrefix('!');
 		//$locationProvider.html5Mode({enabled:true});
 		// 提供动态注册控制接口
@@ -35,16 +36,39 @@ define([
             $translateProvider.translations(locale, translationsTable[locale]);
         }
 
-        var browserLocale = (window.navigator.userLanguage || window.navigator.language);
-        browserLocale = (browserLocale && browserLocale.toLowerCase) ? browserLocale.toLowerCase() : browserLocale;
-        var locale = window.localStorage.getItem('keepwork-language-locale') || browserLocale || 'zh-cn';
-        $translateProvider.preferredLanguage(locale);
+        $translateProvider.preferredLanguage(config.languageLocale);
 
 		// 注册loading拦截器
 		$httpProvider.interceptors.push("loadingInterceptor");
 
 		//$httpProvider.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded;charset=utf-8';
 		//{{{
+		$authProvider.oauth2({
+			name: "facebook",
+			url: "/api/wiki/auth/facebook",
+			clientId: '1692681067519614',
+			redirectUri:window.location.origin +  '/api/wiki/auth/facebook',
+			authorizationEndpoint: 'https://www.facebook.com/v3.0/dialog/oauth',
+			oauthType: '2.0',
+			scope: ['email'],
+			requiredUrlParams: ['scope'],
+			scopeDelimiter: ',',
+		});
+
+		$authProvider.oauth2({
+			name:'google',
+			url: "/api/wiki/auth/google",
+			clientId: '670427490986-ks4bseleea18nvoi73c1ej1oae1gljof.apps.googleusercontent.com',
+			//redirectUri:window.location.origin +  '/wiki/login',
+			redirectUri:window.location.origin +  '/api/wiki/auth/google',
+			authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+			oauthType: '2.0',
+			scope: ['profile', 'email'],
+			requiredUrlParams: ['scope'],
+			scopeDelimiter: ' ',
+			scopePrefix: 'openid',
+		});
+
 		// github 认证配置
 		$authProvider.github({
 			url: "/api/wiki/auth/github",

@@ -7,7 +7,7 @@ define([
     "helper/util",
     "text!html/bigfile.html"
 ], function (app, qiniu, util, htmlContent) {
-    app.registerController("bigfileController", ["$scope", "$rootScope", function ($scope, $rootScope) {
+    app.registerController("bigfileController", ["$scope", "$rootScope", "$translate", function ($scope, $rootScope, $translate) {
         var qiniuBack;
         var uploadTotalSecond = 0;
         var fileUploadTime = 0;
@@ -27,15 +27,15 @@ define([
         }
         $scope.cancel = function (params) {
             if ($scope.uploadingFiles && $scope.uploadingFiles.length > 0 && !$scope.finishUploading){
-                console.log("正在上传");
+                // console.log("正在上传");
                 var confirmObj = {
-                    "title": "提示",
+                    "title": $translate.instant("提示"),
                     "confirmBtnClass": "btn-danger",
                     "theme": "danger",
-                    "content": "还有文件正在上传，确定关闭窗口？"
+                    "content": $translate.instant("还有文件正在上传，确定关闭窗口？")
                 };
                 if (params){
-                    confirmObj.content = "还有文件正在上传，请完成后重试，或者打开新窗口操作";
+                    confirmObj.content = $translate.instant("还有文件正在上传，请完成后重试，或者打开新窗口操作！");
                     confirmObj.cancelBtn = false;
                     confirmObj.confirmBtnClass = "";
                 }
@@ -94,7 +94,7 @@ define([
                     "unUsed": (result.total - result.used) / biteToG
                 };
             }, function (err) {
-                console.log(err);
+                // console.log(err);
             }, false);
         };
 
@@ -361,7 +361,7 @@ define([
                                 getUserStoreInfo();
                             }, function(err){
                                 $scope.uploadingFiles[file.id].backStatus = "failed";
-                                console.log(err);
+                                // console.log(err);
                             });
                             $scope.startUpdating = false;
                             return;
@@ -387,9 +387,9 @@ define([
 								util.post(config.apiUrlPrefix + "qiniu/deleteFile", {
 									key:params.key,
 								}, function (result) {
-									console.log(result);
+									// console.log(result);
 								}, function (err) {
-									console.log(err);
+									// console.log(err);
 								});
 							});
 						};
@@ -397,8 +397,8 @@ define([
 
                     },
                     'Error': function(up, err, errTip) {
-                        console.log(up);
-                        console.log(err);
+                        // console.log(up);
+                        // console.log(err);
                         if ($scope.uploadingFiles && $scope.uploadingFiles[err.file.id]){
                             $scope.uploadingFiles[err.file.id].errTip = err.message + "(" + err.code + ")";
                             $scope.uploadingFiles[err.file.id].backStatus = "failed";
@@ -464,11 +464,11 @@ define([
                         qiniuBack = qiniu.uploader(option);
                     }else{
                         $scope.isUidErr = true;
-                        console.log("uid获取失败");
+                        // console.log("uid获取失败");
                     }
                 }, function () {
                     $scope.isUidErr = true;
-                    console.log("uid获取失败");
+                    // console.log("uid获取失败");
                 });
             }
 
@@ -481,11 +481,11 @@ define([
                     $scope.isUidErr = false;
                 }else{
                     $scope.isUidErr = true;
-                    console.log("uid获取失败");
+                    // console.log("uid获取失败");
                 }
             }, function () {
                 $scope.isUidErr = true;
-                console.log("uid获取失败");
+                // console.log("uid获取失败");
             });
         }
 
@@ -531,10 +531,10 @@ define([
                 qiniuBack.stop();
             }
             config.services.confirmDialog({
-                "title": "取消上传",
+                "title": $translate.instant("取消上传"),
                 "confirmBtnClass": "btn-danger",
                 "theme": "danger",
-                "content": "确定取消该文件上传吗？"
+                "content": $translate.instant("确定取消该文件上传吗？")
             }, function () {
                 fileStop(file);
             }, function () {
@@ -544,10 +544,10 @@ define([
 
         $scope.deleteFile = function(files, index) {
             config.services.confirmDialog({
-                "title":"删除文件",
-                "confirmBtnClass":"btn-danger",
-                "theme":"danger",
-                "content":"确定删除文件吗？"
+                "title": $translate.instant("删除文件"),
+                "confirmBtnClass": "btn-danger",
+                "theme": "danger",
+                "content": $translate.instant("确定删除文件吗？")
             },function(){
                 if (!Array.isArray(files)){
                     var file = files;
@@ -571,7 +571,7 @@ define([
 								// deleteFileSize += files[index].file.size;
 								cb && cb();
 							}, function (err) {
-								console.log(err);
+								// console.log(err);
 								errcb && errcb();
 							});
 						}
@@ -591,8 +591,8 @@ define([
             });
             if (deletingArr.length <= 0){
                 config.services.confirmDialog({
-                    "title": "提示",
-                    "content": "请至少选择一个要删除的文件！",
+                    "title": $translate.instant("提示"),
+                    "content": $translate.instant("请至少选择一个要删除的文件！"),
                     "cancelBtn": false
                 }, function () {
                 });
@@ -607,8 +607,8 @@ define([
             if (!filename || file == ""){
                 targetElem.html(file.filename);
                 config.services.confirmDialog({
-                    "title": "重命名失败",
-                    "content": "文件名不能为空！",
+                    "title": $translate.instant("重命名失败"),
+                    "content": $translate.instant("文件名不能为空！"),
                     "cancelBtn": false
                 }, function () {
                 });
@@ -640,8 +640,8 @@ define([
                 if (data.length > 0){
                     targetElem.html(file.filename);
                     config.services.confirmDialog({
-                        "title": "重命名失败",
-                        "content": "网盘中已存在该文件名！",
+                        "title": $translate.instant("重命名失败"),
+                        "content": $translate.instant("网盘中已存在该文件名！"),
                         "cancelBtn": false
                     }, function () {
                     });
@@ -653,7 +653,7 @@ define([
                         file.filename = filename;
                         targetElem.html(filename);
                     }, function (err) {
-                        console.log(err);
+                        // console.log(err);
                     });
                 }
             });
@@ -662,8 +662,8 @@ define([
         $scope.updateFile = function (file) {
             if ($scope.uploadingFiles && $scope.uploadingFiles.length > 0 && !$scope.finishUploading){
                 config.services.confirmDialog({
-                    "title": "提示",
-                    "content": "还有文件正在上传，请完成后重试，或者打开新窗口操作！",
+                    "title": $translate.instant("提示"),
+                    "content": $translate.instant("还有文件正在上传，请完成后重试，或者打开新窗口操作！"),
                     "cancelBtn": false
                 }, function () {
                     $("#activeUpload").tab("show");
@@ -693,8 +693,8 @@ define([
                 if (!ErrFilenamePatt.test(filename)){
                     targetElem.html(file.filename);
                     config.services.confirmDialog({
-                        "title": "重命名失败",
-                        "content": '文件名不能包含下列任何字符：\\\\ / : * ? " < > |',
+                        "title": $translate.instant("重命名失败"),
+                        "content": $translate.instant('文件名不能包含下列任何字符：\\\\ / : * ? " < > |'),
                         "cancelBtn": false
                     }, function () {
                     });
@@ -719,7 +719,7 @@ define([
             files.map(function (file) {
                 util.get(config.apiUrlPrefix + "bigfile/getDownloadUrlById", {
                     _id:file._id,
-                }, function(data){
+                }, function(data) {
                     if (data) {
                         var a = document.createElement('a');
                         var url = data;
@@ -730,6 +730,12 @@ define([
                         a.click();
                         file.isSelected = false;
                     }
+                }, function(err) {
+                    config.services.confirmDialog({
+                        "title": $translate.instant("文件获取失败"),
+                        "content": $translate.instant("该资源未经审核或审核不通过"),
+                        "cancelBtn": false
+                    }, function () {});
                 });
             });
             $scope.isSelectAll = false;
@@ -741,12 +747,23 @@ define([
             });
             if (downloadingArr.length <= 0){
                 config.services.confirmDialog({
-                    "title": "提示",
-                    "content": "请至少选择一个要下载的文件！",
+                    "title": $translate.instant("提示"),
+                    "content": $translate.instant("请至少选择一个要下载的文件！"),
                     "cancelBtn": false
                 }, function () {
                 });
             }else {
+                for (var i=0; i<downloadingArr.length; i++){
+                    var file = downloadingArr[i]
+                    if(!file.checked || file.checked==2) {
+                        config.services.confirmDialog({
+                            "title": $translate.instant("下载文件失败"),
+                            "content": $translate.instant("含有未审核或审核不通过的文件"),
+                            "cancelBtn": false
+                        }, function () {})
+                        return
+                    }
+                }
                 $scope.downloadFile(downloadingArr);
             }
         };
@@ -761,20 +778,36 @@ define([
         };
 
         $scope.insertBigfileUrl = function (file) {
-            var file_key = file.file && file.file.key;
-            var file_id = file._id;
-            var pasteUrl = location.origin + '/wiki/file_player#?file_key=' + file_key;
-            !file_key && (pasteUrl = location.origin + '/wiki/file_player#?file_id=' + file_id);
+            if (!file.checked || file.checked==2){
+                config.services.confirmDialog({
+                    "title": $translate.instant("文件获取失败"),
+                    "content": $translate.instant("该资源未经审核或审核不通过"),
+                    "cancelBtn": false
+                }, function () {})
+            } else {
+                var file_key = file.file && file.file.key;
+                var file_id = file._id;
+                var pasteUrl = location.origin + '/wiki/file_player#?file_key=' + file_key;
+                !file_key && (pasteUrl = location.origin + '/wiki/file_player#?file_id=' + file_id);
 
-            $scope.cancel({
-                pasteUrl: pasteUrl
-            })
+                $scope.cancel({
+                    pasteUrl: pasteUrl
+                })
+            }
         }
 
         $scope.insertFile = function (file) {
-            var insertingFiles = [];
-            insertingFiles.push(file);
-            $scope.insertFiles(insertingFiles);
+            if (!file.checked || file.checked==2){
+                config.services.confirmDialog({
+                    "title": $translate.instant("文件获取失败"),
+                    "content": $translate.instant("该资源未经审核或审核不通过"),
+                    "cancelBtn": false
+                }, function () {})
+            } else {
+                var insertingFiles = [];
+                insertingFiles.push(file);
+                $scope.insertFiles(insertingFiles);
+            }
         };
 
         $scope.insertFiles = function (files) {
@@ -786,8 +819,8 @@ define([
 
             if (files.length <= 0){
                 config.services.confirmDialog({
-                    "title": "提示",
-                    "content": "请至少选择一个要插入的文件！",
+                    "title": $translate.instant("提示"),
+                    "content": $translate.instant("请至少选择一个要插入的文件！"),
                     "cancelBtn": false
                 }, function () {
                 });
@@ -802,11 +835,11 @@ define([
             var url = $scope.insertUrl;
             var urlReg= /^(http|https):\/\//;
             if (!url){
-                $scope.insertFileUrlErr = "请输入要插入的url地址！";
+                $scope.insertFileUrlErr = $translate.instant("请输入要插入的url地址！");
                 return;
             }
             if (!urlReg.test(url)){
-                $scope.insertFileUrlErr = "请输入正确的url地址！";
+                $scope.insertFileUrlErr = $translate.instant("请输入正确的url地址！");
                 return;
             }
             switch ($scope.selectedType){
@@ -824,6 +857,13 @@ define([
                 "url": url
             });
         };
+
+        var file_status = ["未审核", "已通过", "不通过"]
+
+        $scope.getFileStatus = function (file) {
+            file.status = file_status[file.checked]
+        };
+
 
         $scope.getIconClass = function (file) {
             const ImgReg = /^image\/+/;

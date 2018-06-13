@@ -14,7 +14,7 @@ local params = {
 	grant_type="authorization_code",
 	code = request:get("code"),
 	client_id = request:get("clientId"),
-	client_secret = KEEPWORK["config"]["default"]["threeService"]["qq"]["client_secret"],
+	client_secret = KEEPWORK["config"][CURRENT_ENV]["threeService"]["qq"]["client_secret"],
 	redirect_uri = request:get("redirectUri"),
 }
 
@@ -79,7 +79,7 @@ end
 
 -- 没有绑定
 if not userThreeService then
-	db.user_three_service:insertOne({["+serviceId+serviceName"]={serviceId, serviceName}}, {serviceId=serviceId, serviceName=serviceName, token=accessToken, serviceName=serviceUsername}, resume)
+	db.user_three_service:insertOne({["+serviceId+serviceName"]={serviceId, serviceName}}, {serviceId=serviceId, serviceName=serviceName, token=accessToken, serviceUsername=serviceUsername}, resume)
 	yield()
 	return response:send({error=0, data={serviceId=serviceId, access_token=accessToken, serviceName=serviceName}, message="user not found"})
 else
@@ -89,6 +89,9 @@ else
 	end
 end
 
+if not userThreeService.username then
+	return response:send({error=0, message="user not bind"})
+end
 db.user:findOne({["+username"]=userThreeService.username}, resume)
 local err, userinfo = yield()
 if not userinfo then

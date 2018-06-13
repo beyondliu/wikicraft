@@ -5,6 +5,8 @@
 /* 程序配置模块 */
 
 (function () {
+    const ProdHost = "^keepwork.com$";
+    const ReleaseHost = "^release.keepwork.com$";
 	var wiki_config = window.wiki_config || {};
 	var localEnv = window.location.hostname.indexOf("localhost") >= 0 ? true : false;
 	var localVMEnv = localEnv && window.location.host != "localhost:63342";
@@ -13,23 +15,68 @@
 	var envIndex = hostname.indexOf(".dev.keepwork.com");
 	if (!wiki_config.webroot && envIndex > 0) {
 		pathPrefix = '/' + hostname.substring(0, envIndex) + '/';
-	}
+    }
+    var getEnv = function(){
+        var prodExp = new RegExp(ProdHost);
+        var releaseExp = new RegExp(ReleaseHost);
+        if (prodExp.test(hostname)) {
+            return "prod";
+        }
+        if (releaseExp.test(hostname)) {
+            return "release";
+        }
+        return "develop";
+    }
+  var isGlobalVersion = wiki_config && wiki_config.locale == 'en_US'
+
+  var languageLocale = (function(){
+    var browserLocale = (window.navigator.userLanguage || window.navigator.language);
+    browserLocale = (browserLocale && browserLocale.toLowerCase) ? browserLocale.toLowerCase() : browserLocale;
+    var locale = window.localStorage.getItem('keepwork-language-locale') || browserLocale || 'zh-cn';
+    locale = /^zh/.test(locale) ? 'zh-cn' : 'en';
+    return locale
+  })();
+
 	config = {
-		// --------------------------------------前端配置 START----------------------------------------------
+    // --------------------------------------前端配置 START----------------------------------------------
+    env: getEnv(),
+    serverConfig: wiki_config,
+    isGlobalVersion: isGlobalVersion,
+    languageLocale: languageLocale,
+    languageLocaleIsForGlobalUser: languageLocale === 'en',
 		localEnv:localEnv,                                                                                         // 是否本地调试环境
 		localVMEnv:localVMEnv,                                                                                     // 本地虚拟机环境
 		hostname:wiki_config.hostname ? wiki_config.hostname.split(":")[0] : window.location.hostname,             // url中的hostname, 优先取服务端给过来的(cname转发，客户端获取不到真实的hostname)
-		officialDomainList:["keepwork.com", "qiankunew.com"],                                                      // 官方域名 因存在用户官方子域名和其它域名 故需记录
+    keepworkOfficialGitHost: 'https://api.keepwork.com/git',
+    officialDomainList:["keepwork.com", "qiankunew.com"],                                                      // 官方域名 因存在用户官方子域名和其它域名 故需记录
 		officialSubDomainList:[                                                                                    // 官方占用的子域名列表
-			"release.keepwork.com",
 			"dev.keepwork.com",
-			"stage.keepwork.com",
 			"test.keepwork.com",
+
+			"stage.keepwork.com",
+			"release.keepwork.com",
+      // "keepwork.com"
+			"api-stage.keepwork.com",
+			"api-release.keepwork.com",
+			"api.keepwork.com",
+
+			"stage-en.keepwork.com",
+			"release-en.keepwork.com",
+			"en.keepwork.com",
+			"api-stage-en.keepwork.com",
+			"api-release-en.keepwork.com",
+			"api-en.keepwork.com",
+
 			"dev.qiankunew.com",
 			"stage.qiankunew.com",
 			"test.qiankunew.com",
-			"wxa.keepwork.tk",
+			"wxa.keepwork.com",
 			"inside.keepwork.tk",
+
+			"stage-keepwork.tk",
+			"release-keepwork.tk",
+			"api.stage-keepwork.tk",
+			"api.release-keepwork.tk",
 		],
 		// 预加载模块列表
 		preloadModuleList:[
@@ -125,7 +172,7 @@
             if (trim_version == "MSIE9.0" || trim_version == "MSIE8.0" || trim_version == "MSIE7.0" || trim_version == "MSIE6.0") {
                 // alert("IE浏览器版本过低，请到指定网站去下载相关版本");
 				//然后跳到需要连接的下载网站
-				console.log(window.location);
+				// console.log(window.location);
 				if (window.location.pathname !== "/wiki/browers"){
 					window.location.href="/wiki/browers";
 				}
@@ -149,7 +196,9 @@
 			config.apiHost = hostname + window.location.host.substring(window.location.hostname.length);
 			//config.apiHost = "dev.keepwork.com"; // debug use
 		}
-		config.apiUrlPrefix = 'http://' + config.apiHost + '/api/wiki/models/';
+
+		config.httpProto = window.location.origin.replace(/:.*$/, "");
+		config.apiUrlPrefix = config.httpProto + '://' + config.apiHost + '/api/wiki/models/';
 	}
 
 	//-----------------------------helper function-----------------------------------

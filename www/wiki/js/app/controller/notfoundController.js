@@ -12,12 +12,16 @@ define([
         $scope.showNewPageBtn = false;
 
         $scope.goBack = function () {
-            history.back(-1);
+            if (history[-1]) {
+                history.back(-1);
+            } else {
+                util.go("/");
+            }
         };
 
         $scope.newPage = function () {
             storage.sessionStorageSetItem("urlObj", util.parseUrl());
-            console.log(storage.sessionStorageGetItem("urlObj"));
+            // console.log(storage.sessionStorageGetItem("urlObj"));
             util.go("wikieditor");
         };
 
@@ -40,10 +44,10 @@ define([
                         username: username,
                         sitename: sitename
                     }, function(data){
-                        console.log(data);
+                        // console.log(data);
                         $scope.showNewPageBtn = true;
                     }, function (err) {
-                        console.log(err);
+                        // console.log(err);
                     });
                 }
             }

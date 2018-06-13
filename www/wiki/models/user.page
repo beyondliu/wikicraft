@@ -19,9 +19,17 @@ include_once("./user_active.page")
 include_once("./data_source.page")
 include_once("./site_data_source.page")
 include_once("./user_three_service.page")
+include_once("./pages_stars.page")
+include_once("./elasticsearch.page")
+include_once("./validators.page")
 
 local user = inherit(models.abstract.base, gettable("models.user"))
 user.db_name = "user"
+
+
+local es = models.elasticsearch:new()
+local index = CURRENT_ENV .. "_kw_users"
+es:connect({index=index})
 
 
 function user:ctor()
@@ -47,6 +55,7 @@ function user:ctor()
 	self:addfield("websiteCount", "number") -- 作品数量
 	self:addfield("signature", "string")
 	self:addfield("isadmin", "boolean", false)
+	self:addfield("locked_deadline", "string") -- 解封时间
 end
 
 
@@ -95,7 +104,7 @@ end
 function user:api_sendSms(params)
 	local ip = getpeername()
 
-	if ip ~= "121.14.117.239" then
+	if ip ~= "10.28.14.2" then
 		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
 	end
 
@@ -194,8 +203,12 @@ function user:update(params)
 	end
 
 	self:db():updateOne({_id=query._id}, query, resume)
+	local err, user = yield()
+	user.password = nil
 
-	return errors:wrap(yield())
+	self:update_to_es(user)
+
+	return errors:wrap(err, user)
 end
 
 -- 用户注销账号
@@ -219,6 +232,8 @@ function user:api_deleteByName(params)
 		return errors:wrap()
 	end
 
+	self:delete_in_es(userinfo)
+
 	-- 删除用户所有站点
 	local websiteDB = models.website:new()
 	websiteDB:deleteUserWebsite(userinfo._id)
@@ -239,13 +254,21 @@ function user:api_updateByName(params)
 		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
 	end
 
+	if self:is_locked({username = params.username}) then
+		return errors:wrap("该帐号已被封禁")
+	end
+
 	local username = params.username
 	self:filterUserInfo(params)
 	params.dataSource = nil
 
 	self:db():updateOne({["+username"]={username}}, params, resume)
+	local err, user = yield()
+	user.password = nil
 
-	return errors:wrap(yield())
+	self:update_to_es(user)
+
+	return errors:wrap(err, user)
 end
 
 -- 更新用户信息
@@ -262,16 +285,20 @@ function user:api_updateUserInfo(params)
 	params.dataSource = nil
 
 	self:db():updateOne({["+username"]={username}}, params, resume)
+	local err, user = yield()
+	user.password = nil
+	self:update_to_es(user)
 
-	return errors:wrap(yield())
+	return errors:wrap(err, user)
 end
 
 -- 手机验证
 function user:api_verifyCellphoneOne(params)
+
 	if not params.cellphone then
 		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
-    end
-    
+	end
+	
 	if params.bind then
 		self:db():find({["+cellphone"]={params.cellphone}}, resume)
 		local _, data = yield()
@@ -279,20 +306,24 @@ function user:api_verifyCellphoneOne(params)
 		if data and #data > 0 then
 			return errors:new("手机号已绑定:" .. data[1].username)
 		end
-    end
+	end
 
-	local smsCode = tostring(math.random(1000,9999))
+	local smsCode, is_testing = util:generateSmsCode(params.cellphone)
 	local smsParams = {to=params.cellphone, datas={smsCode,"3分钟"}, templateId="194013"}
 	local data = sendTemplateSms(smsParams)
-	if not data or  data.statusCode ~= "000000" then
+	if not data or  data.statusCode ~= "000000" and not is_testing then
 		return errors:wrap(errors:new(data.statusMsg))
 	end
 
 	local value = {cellphone=params.cellphone, smsCode=smsCode}
 	value = commonlib.Json.Encode(value)
-	mem_cache:set(data.templateSMS.smsMessageSid, value, nil, 180)
+	local smsMessageSid = params.cellphone
+	if not is_testing then
+		smsMessageSid = data.templateSMS.smsMessageSid
+	end
+	mem_cache:set(smsMessageSid, value, nil, 180)
 
-	return errors:wrap(nil, {smsId=data.templateSMS.smsMessageSid})
+	return errors:wrap(nil, {smsId=smsMessageSid})
 end
 
 -- 手机验证
@@ -310,30 +341,35 @@ function user:api_verifyCellphoneTwo(params)
 	end
 	mem_cache:set(params.smsId, nil)
 	
-    local cellphone = value.cellphone
+	local cellphone = value.cellphone
 
-    -- if params.bind is true, it's for binding
-    -- if params.bind is false, it's for unbinding
-    if params.bind ~= nil then
-        -- set cellphone to '' if it's unbinding 
-        if not params.bind then
-            cellphone = '' 
-        end
-        self:db():updateOne({["+username"]={username}}, {cellphone=cellphone}, resume)
-        return errors:wrap(yield())
-    end
+	-- if params.bind is true, it's for binding
+	-- if params.bind is false, it's for unbinding
+	if params.bind ~= nil then
+		-- set cellphone to '' if it's unbinding 
+		if not params.bind then
+			cellphone = '' 
+		end
+		self:db():updateOne({["+username"]={username}}, {cellphone=cellphone}, resume)
+		local err, user = yield()
+		user.password = nil
+		return errors:wrap(err, user)
+	end
 
-    -- for realname verification
-    if params.setRealNameInfo ~= nil then 
-        local realNameInfo = {
-            cellphone = cellphone,
-            verified = true
-        }
-        self:db():updateOne({["+username"]={username}}, {realNameInfo=realNameInfo}, resume)
-        return errors:wrap(yield())
-    end
+	-- for realname verification
+	if params.setRealNameInfo ~= nil then 
+		local realNameInfo = {
+			cellphone = cellphone,
+			verified = true
+		}
+		self:db():updateOne({["+username"]={username}}, {realNameInfo=realNameInfo}, resume)
+		local err, user = yield()
+		user.password = nil
 
-    return errors:wrap(errors.REQUEST_PARAMS_ERROR)
+		return errors:wrap(err, user)
+	end
+
+	return errors:wrap(errors.REQUEST_PARAMS_ERROR)
 end
 
 
@@ -345,6 +381,7 @@ function user:api_verifyEmailOne(params)
 		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
 	end
 
+	math.randomseed(os.time())
 	local verifyCode = tostring(math.random(1000,9999))
 	local url = "http://" .. request:GetHost() .. "/api/wiki/models/user/verifyEmailTwo?username=" .. username .. "&verifyCode=" .. verifyCode
 	if params.bind then
@@ -422,6 +459,7 @@ function user:api_findPwdOne(params)
 	if not userinfo then
 		return errors:wrap(errors.USER_NOT_EXIST)
 	end
+	math.randomseed(os.time())
 	local t = os.time()
 	local key = tostring(t) .. tostring(math.random(10000))
 	local url = "http://keepwork.com/wiki/findPwd?step=2&key=" .. key .. "&email=" .. params.email
@@ -458,8 +496,10 @@ function user:api_findPwdTwo(params)
 
 	local password = self:encodePassword(params.password)
 	self:db():updateOne({["+email"]={params.email}}, {password=password}, resume)
+	local err, user = yield()
+	user.password = nil
 
-	return errors:wrap(yield())
+	return errors:wrap(err, user)
 end
 
 -- 更改密码
@@ -484,7 +524,10 @@ function user:api_changepw(params)
 	end
 
 	self:db():updateOne({["+username"]={username}}, {password=newpassword}, resume)
-	return errors:wrap(yield())
+	local err, user = yield()
+	user.password = nil
+
+	return errors:wrap(err, user)
 end
 
 -- 发邮件
@@ -540,9 +583,16 @@ function user:api_login(params)
 		return errors:wrap("密码错误")
 	end
 
+	if self:is_locked({user = userinfo}) then
+		errors:raise(403, "该帐号已被封禁")
+	end
+
+	request.username = userinfo.username
+	request.userid = userinfo._id
 	local siteDataSourceDB = models.site_data_source:new()
 	userinfo.defaultSiteDataSource = siteDataSourceDB:api_getSiteDataSource({username=userinfo.username, sitename=userinfo.defaultDataSourceSitename}).data
 	userinfo.dataSource = siteDataSourceDB:api_getByUsername({username=userinfo.username}).data
+	userinfo.password = nil
 
 	local vipDB = models.vip:new()
 	userinfo.vipInfo = vipDB:api_getByUsername({username=params.username}).data
@@ -568,6 +618,7 @@ function user:api_bindThreeService(params)
 	local userThreeServiceDB = models.user_three_service:new()
 	threeService.userId = userinfo._id
 	userThreeServiceDB:api_upsert(threeService)
+	userinfo.password = nil
 
 	return errors:wrap(nil, {token=encodeJWT({userId=userinfo._id, username=userinfo.username}), userinfo=userinfo, isNewUser=0})
 end
@@ -575,6 +626,46 @@ end
 -- 注册
 function user:api_register(params)
 	-- 用户名 密码 为必填项
+
+	-- register with cellphone logic
+	-- if params.cellphone
+	--   check the cellphone usage info
+	--   verify smsId && smsCode
+	--   set username as kw5a9f9c16x90bcdef0 if params.username is Nil
+	--   set realnameInfo
+
+	local realnameInfo = {}
+
+	if (params.cellphone) then
+		if self:api_checkCellphone({cellphone=params.cellphone}).data == 0 then
+			return errors:wrap(errors:new("手机号已存在"))
+		end
+
+		if (not params.smsId) or (not params.smsCode) then
+			return errors:wrap(errors.REQUEST_PARAMS_ERROR)
+		end
+		local value = mem_cache:get(params.smsId)
+		value = commonlib.Json.Decode(value or "{}")
+		if (value.smsCode ~= params.smsCode) or (value.cellphone ~= params.cellphone) then
+			return errors:wrap(errors:new("验证码错误"))
+		end
+		mem_cache:set(params.smsId, nil)
+
+		-- generate uuid as kw5a9f9c16x90bcdef0 for cellphone user
+		if (not params.username) then
+			params.username = string.format(
+				'kw%sx%s',
+				string.format('%x', os.time()),
+				string.format('%x', params.cellphone)
+			)
+		end
+
+		realNameInfo = {
+			cellphone = params.cellphone,
+			verified = true
+		}
+	end
+
 	if (not params.username) or (not params.password) then
 		return errors:wrap(err)
 	end
@@ -608,6 +699,7 @@ function user:api_register(params)
 		password = self:encodePassword(params.password),
 		email = params.email,
 		cellphone = params.cellphone,
+		realNameInfo = realNameInfo,
 		portrait = params.portrait,
 		joindate = ParaGlobal.GetDateFormat("yyyy-MM-dd"),
 		defaultDataSourceName=const.DEFAULT_DATA_SOURCE_NAME,
@@ -623,6 +715,11 @@ function user:api_register(params)
 	if not userinfo then
 		return errors:wrap(errors.SERVER_INNER_ERROR)
 	end
+
+	self:insert_to_es(userinfo)
+
+	request.username = userinfo.username
+	request.userid = userinfo._id
 
 	local siteDataSourceDB = models.site_data_source:new()
 
@@ -644,6 +741,8 @@ function user:api_register(params)
 	setAuthCookie(token)
 
 	user_log("注册新用户:" .. params.username)
+
+	userinfo.password = nil
 	return errors:wrap(nil, {token=token, userinfo=userinfo, isNewUser=1})
 end
 
@@ -656,6 +755,12 @@ function user:api_getDefaultSiteDataSource(params)
 	self:db():findOne({["+username"]={params.username}}, resume)
 	local _, userinfo = yield()
 
+	if userinfo then
+		if self:is_locked({user = userinfo}) then
+			return errors:wrap("该帐号已被封禁")
+		end
+	end
+
 	local siteDataSourceDB = models.site_data_source:new()
 
 	return siteDataSourceDB:api_getSiteDataSource({username=userinfo.username, sitename=userinfo.defaultDataSourceSitename})
@@ -665,6 +770,10 @@ end
 function user:api_getUserDataSource(params)
 	if not params.username then
 		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
+	end
+
+	if self:is_locked({username = params.username}) then
+		return errors:wrap("该帐号已被封禁")
 	end
 
 	local siteDataSourceDB = models.site_data_source:new()
@@ -694,6 +803,10 @@ function user:api_getProfile()
 		return errors:wrap(errors.NOT_FOUND)
 	end
 
+	if self:is_locked({user = data}) then
+		return errors:wrap("该帐号已被封禁")
+	end
+
 	local siteDataSourceDB = models.site_data_source:new()
 	data.defaultSiteDataSource = siteDataSourceDB:api_getSiteDataSource({username=data.username, sitename=data.defaultDataSourceSitename}).data
 	data.dataSource = siteDataSourceDB:api_getByUsername({username=data.username}).data
@@ -701,6 +814,7 @@ function user:api_getProfile()
 	-- 获取用户vip信息
 	local vipDB = models.vip:new()
 	data.vipInfo = vipDB:api_getByUsername({username=data.username}).data
+	data.password = nil
 
 	return errors:wrap(nil, data)
 end
@@ -716,6 +830,11 @@ function user:api_getById(params)
 	if not data then
 		return errors:wrap(err or errors.NOT_FOUND, data)
 	end
+
+	if self:is_locked({user = data}) then
+		return errors:wrap("该帐号已被封禁")
+	end
+
 	data.password = nil
 
 	data.dataSource = self:api_getUserDataSource({username=data.username}).data
@@ -731,6 +850,11 @@ function user:api_getByName(params)
 
 	self:db():findOne({["+username"]={params.username}}, resume)
 	local err, data = yield()
+
+	if self:is_locked({username = params.username}) then
+		return errors:wrap("该帐号已被封禁")
+	end
+
 	if not data then
 		return errors:wrap(err or errors.NOT_FOUND, data)
 	end
@@ -752,6 +876,10 @@ function user:api_getByEmail(params)
 	local err, data = yield()
 	if not data then
 		return errors:wrap(err or errors.NOT_FOUND, data)
+	end
+
+	if self:is_locked({user = data}) then
+		return errors:wrap("该帐号已被封禁")
 	end
 
 	data.password = nil
@@ -780,6 +908,10 @@ function user:api_getFavoriteSortList(params)
 		return errors:wrap(err)
 	end
 
+	for i, user in ipairs(data) do
+		user.password = nil
+	end
+
 	return errors:wrap(nil, {total=count, pageCount=util:getPageCount(count,limit), userList=data})
 end
 
@@ -787,6 +919,10 @@ end
 function user:api_getUserAndSiteBySitename(params)
 	if not params.sitename or (not params.username) then
 		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
+	end
+
+	if self:is_locked({username = params.username}) then
+		return errors:wrap("该帐号已被封禁")
 	end
 
 	local websiteDB = models.website:new()
@@ -799,6 +935,7 @@ function user:api_getUserAndSiteBySitename(params)
 	if not userinfo then
 		return  errors:wrap(errros.NOT_FOUND)
 	end
+	userinfo.password = nil
 
 	return errors:wrap(nil, {userinfo=userinfo, siteinfo=siteinfo})
 end
@@ -810,6 +947,10 @@ function user:updateWebsiteCount(userId, count)
 	if not user then
 		log("user not exist, userId:", userId)
 		return
+	end
+
+	if self:is_locked({user = user}) then
+		return errors:wrap("该帐号已被封禁")
 	end
 
 	user.websiteCount = user.websiteCount or 0
@@ -828,6 +969,10 @@ function user:updateFavoriteCount(userId, count)
 		return
 	end
 
+	if self:is_locked({user = user}) then
+		return errors:wrap("该帐号已被封禁")
+	end
+
 	user.favoriteCount = user.favoriteCount or 0
 	self:db():updateOne({_id=userId}, {favoriteCount=user.favoriteCount+count}, resume)
 	yield()
@@ -844,6 +989,10 @@ function user:updateFansCount(userId, count)
 		return
 	end
 
+	if self:is_locked({user = user}) then
+		return errors:wrap("该帐号已被封禁")
+	end
+
 	user.fansCount = user.fansCount or 0
 	self:db():updateOne({_id=userId}, {fansCount=user.fansCount+count}, resume)
 	yield()
@@ -855,6 +1004,10 @@ end
 function user:api_getStatics(params)
 	if not params.userId then
 		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
+	end
+
+	if self:is_locked({_id = params.userId}) then
+		return errors:wrap("该帐号已被封禁")
 	end
 
 	local websiteDB = models.website:new()
@@ -887,6 +1040,21 @@ function user:api_checkUsername(params)
 	return websiteDomainDB:api_checkDomain({domain=params.username})
 end
 
+-- 检测电话号码是否有效
+function user:api_checkCellphone(params)
+	if not params.cellphone then
+		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
+	end
+
+	self:db():findOne({["+cellphone"]={params.cellphone}}, resume)
+	local err, data = yield()
+	if data then
+		return errors:wrap(nil, 0) -- 无效
+	end
+
+	return errors:wrap(nil, 1)
+end
+
 -- 获取用户详细相关信息通过用户名
 function user:api_getDetailByName(params)
 	local skip, limit = util:pagination(params)
@@ -898,7 +1066,13 @@ function user:api_getDetailByName(params)
 	self:db():findOne({["+username"]={params.username}}, resume)
 	local err, userinfo = yield()
 
-	if not userinfo or userinfo.roleId == const.USER_ROLE_EXCEPTION then
+	if not userinfo then errors:raise(404, "user not exist") end
+
+	if self:is_locked({user = userinfo}) then
+		errors:raise(403, "该帐号已被封禁")
+	end
+
+	if userinfo.roleId == const.USER_ROLE_EXCEPTION then
 		return errors:wrap(nil, nil)
 	end
 	
@@ -929,10 +1103,15 @@ function user:api_getDetailByName(params)
 
 	-- 获得用户关注
 	local followUserObj = userFansDB:api_getByFansUserId({fansUserId=userinfo._id}).data
+
 	-- 获取用户收藏的站点
 	local userFavoriteDB = models.user_favorite:new()
 	local followSiteObj = userFavoriteDB:api_getByUserId({userId=userinfo._id}).data
 	local followObj = {followUserObj=followUserObj, followSiteObj=followSiteObj}
+
+	-- 获取用户收藏的网页
+	local pages_stars = models.pages_stars:new()
+	local starred_pages = pages_stars:get_starred_pages_of_a_user({username=userinfo.username})
 
 	-- 获取用户动态
 	local userTrendsDB = models.user_trends:new()
@@ -942,7 +1121,18 @@ function user:api_getDetailByName(params)
 	local userActiveDB = models.user_active:new()
 	local activeObj = userActiveDB:api_getByUsername({username=userinfo.username}).data
 
-	return errors:wrap(nil,{userinfo=userinfo, activeObj=activeObj, selfOrganizationObj=selfOrganizationObj, joinOrganizationObj=joinOrganizationObj, hotSiteObj=hotSiteObj, allSiteList=allSiteList, followObj=followObj, fansObj=fansObj, trendsObj=trendsObj})
+	return errors:wrap(nil,{
+		userinfo = userinfo,
+		activeObj = activeObj,
+		selfOrganizationObj = selfOrganizationObj,
+		joinOrganizationObj = joinOrganizationObj,
+		hotSiteObj = hotSiteObj,
+		allSiteList = allSiteList,
+		followObj = followObj,
+		fansObj = fansObj,
+		trendsObj = trendsObj,
+		starred_pages = starred_pages,
+	})
 end
 
 -- 获取gitlab账号
@@ -960,6 +1150,10 @@ function user:api_getGitlabAccount(params)
 
 	if userinfo.password ~= self:encodePassword(params.password) then
 		return errors:wrap("密码错误")
+	end
+
+	if self:is_locked({user = userinfo}) then
+		return errors:wrap("该帐号已被封禁")
 	end
 
 	local dataSourceDB = models.data_source:new()
@@ -1001,8 +1195,186 @@ function user:api_isLogin(params)
 		isLogin = true
 	end
 
+	local username = getUsername()
+	if self:is_locked({username=username}) then
+		local message = "该帐号已被封禁"
+		local data = {isLogin=false, token=""}
+		return errors:raise(403, message, data)
+	end
+
 	local cookie_token = request:get_cookie("token")
 
 	return errors:wrap(nil, {isLogin=isLogin, token=cookie_token})
 end
 
+
+
+function user:insert_to_es(params)
+	local user = {
+		type = "users",
+		id = params._id,
+		username = params.username,
+		suggestion = params.username,
+		display_name = params.displayName,
+		portrait = params.portrait,
+		location = params.location,
+	}
+	es:insertOne(user, function(err, data) end)
+end
+
+
+function user:update_to_es(params)
+	local user = {
+		type = "users",
+		id = params._id,
+		display_name = params.displayName,
+		portrait = params.portrait,
+		location = params.location,
+	}
+	es:updateOne(user, function(err, data) end)
+end
+
+
+function user:delete_in_es(params)
+	local user = {
+		type = "users",
+		id = params._id,
+	}
+	es:deleteOne(user, function(err, data) end)
+end
+
+
+function user:api_search(params)
+	local clean_params, is_params_error, message = self:search_validator(params)
+	if (is_params_error) then
+		return response:status(400):send({error={message=message,status=400}})
+	end
+	local err, search_result = es:search(clean_params)
+	local rcode = search_result.rcode
+	local wrapped_result = {}
+	if (rcode == 200) then
+		wrapped_result = self:wrap_search_result(search_result, params.visitor)
+	else
+		wrapped_result = search_result.data
+	end
+	return errors:wrap(err, wrapped_result)
+end
+
+
+function user:search_validator(params)
+	local validators = models.validators:new()
+	local clean_data = {}
+	local required_fields = {"q"}
+	local is_params_error, message = validators.required_fields_validator(params, required_fields)
+	if (not is_params_error) then
+		clean_data = {
+			type = "users",
+			q = params.q,
+			fields = {'username', 'display_name'},
+			page = tonumber(params.page) or 1,
+			size = tonumber(params.size) or 500,
+			sort = params.sort,
+			highlight = 0,
+			fuzziness = "AUTO",
+		}
+		if (clean_data.size > 500) then clean_data.size = 500 end
+	end
+	return clean_data, is_params_error, message
+end
+
+
+function user:wrap_search_result(result, visitor)
+	local wrapped_result = {}
+	local err, visitor_info
+	local rcode = result.rcode
+
+	wrapped_result = {
+		timed_out = result.data.timed_out,
+		took = result.data.took,
+		total = result.data.hits.total,
+		status = rcode
+	}
+
+	local hits = {}
+	for i, hit in ipairs(result.data.hits.hits) do
+		hit._source._id = tonumber(hit._id)
+		hits[#hits + 1] = hit._source
+	end
+
+	if (visitor) then
+		self:db():findOne({["+username"] = {visitor}}, resume)
+		err, visitor_info = yield()
+	end
+
+	local finished_count = 0
+	local userFansDB = models.user_fans:new()
+
+	for i, user in ipairs(hits) do
+		if (visitor_info) then
+			userFansDB:db():findOne({["+userId+fansUserId"]={user._id, visitor_info._id}},
+				function(err, data)
+					finished_count = finished_count + 1
+					user.following = 0
+					if (data) then user.following = 1 end
+					if (finished_count == #hits) then resume() end
+				end
+			)
+			if (i == #hits) then yield() end
+		end
+		user._id = nil
+	end
+
+	wrapped_result.hits = hits
+	return wrapped_result
+end
+
+
+function user:is_locked(params)
+	if not (params.username or params.user or params._id) then error("username, userId, or userObj required ") end
+	local user = params.user
+	if not user then
+		if params.username then
+			self:db():findOne({["+username"]={params.username}}, resume)
+		else
+			self:db():findOne({_id = params._id}, resume)
+		end
+		local err, result = yield()
+		user = result
+		if not user then errors:raise(404, "user not found") end
+	end
+
+	if not user.locked_deadline then return false, nil end
+
+	local now = datetime()
+	if util:compare_datetime(user.locked_deadline, now) then
+		return true, user.locked_deadline
+	else
+		return false, nil
+	end
+end
+
+
+function user:refuseLockedUser()
+	local token = getTokenInfo()
+
+	if not token then
+		return nil
+	end
+
+	local username = token.username
+
+	if not username then
+		return nil
+	end
+
+	if not self:is_locked({username=username}) then
+		return nil
+	end
+
+	errors:raise(401, "您的帐号已被封禁")
+end
+
+
+function user:api_test()
+	user:refuseLockedUser()
+end

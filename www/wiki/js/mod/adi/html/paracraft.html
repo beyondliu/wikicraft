@@ -1,0 +1,632 @@
+<style>
+    .paracraft{
+        max-width: 1180px;
+        margin: 0 auto;
+    }
+
+    /* style1 */
+    .paracraft-mod .style1{
+        display: flex;
+        background-color: #F9F9F9;
+        box-shadow: 0 0 5px 0 rgba(44,62,80,.35);
+        padding:0;
+        position: relative;
+    }
+
+    .paracraft-mod .style1 a{
+        color: #666;
+    }
+
+    .paracraft-mod .style1 .btn-primary{
+        color: #ffffff;
+    }
+
+    .paracraft-mod .style1 h4{
+        margin-top:0;
+        min-height: 20px;
+        overflow: hidden;
+    }
+
+    .paracraft-mod .style1 h4 > a{
+        display: block;
+        float: left;
+    }
+
+    .paracraft-mod .style1 h4 > div{
+        float: right;
+    }
+
+    @media (min-width:769px) {
+        .paracraft-mod .style1 .img{
+            width: 300px;
+            height: auto;
+            overflow: hidden;
+        }
+
+        .paracraft-mod .style1 .img img{
+            min-width: 100%;
+            min-height: 100%;
+        }
+    }
+
+    .paracraft-mod .style1 .text{
+        min-height: 200px;
+        padding: 20px;
+    }
+
+    .paracraft-mod .style1 .inner p{
+        line-height: 40px;
+        height: 50px;
+    }
+
+    .paracraft-mod .style1 .inner .col-xs-6{
+        padding-left:0;
+    }
+
+    .paracraft-mod .style1 .inner .col-xs-12{
+        margin-bottom: 25px;
+        padding:0;
+        width:195px;
+    }
+
+    .paracraft-mod .style1 .inner .icon{
+        vertical-align: text-bottom;
+        font-size: 17px;
+        margin-right: 10px;
+        width: 24px;
+        height: 17px;
+    }
+
+    .paracraft-mod .style1 .inner .glyphicon-star{
+        color: #FD3265;
+    }
+
+    .paracraft-mod .style1 .inner .info{
+        color: #666;
+    }
+
+    .paracraft-mod .style1 .info{
+        font-size: 12px;
+        font-weight: normal;
+        color: #999;
+    }
+
+    .paracraft-mod .style1 .btn-default{
+        background-color: transparent;
+        border:1px solid #656565;
+    }
+
+    .paracraft-mod .style1 .mask{
+        width:100%;
+        height:100%;
+        position: absolute;
+        left:0;
+        top:0;
+        background-color: rgba(0,0,0,.3);
+    }
+
+    .paracraft-mod .style1 .model-main{
+        position: absolute;
+        background-color: #FFF;
+        width: 390px;
+        top: 10%;
+        left: 50%;
+        align-self: center;
+        transform: translate(-195px,0);
+        padding: 20px 58px 30px;
+        text-align: center;
+    }
+
+    .paracraft-mod .style1 .model-main .close-icon{
+        position: absolute;
+        right: 5px;
+        top: 5px;
+    }
+
+    .paracraft-mod .style1 .model-main .btn-default{
+        font-size: 16px;
+        padding: 8px 37px;
+        border: 1px solid #3977AD;
+        color: #333;
+    }
+
+    .paracraft-mod .style1 .model-main p{
+        line-height: 30px;
+    }
+
+    /* @media css */
+    @media (max-width: 992px) {
+        .paracraft-mod .style1 .inner{
+            padding-right:0;
+        }
+    }
+    @media (max-width: 768px){
+        .paracraft-mod .style1{
+            display: block;
+        }
+        
+        .paracraft-mod .style1 .img{
+            text-align: center;
+        }
+
+        .paracraft-mod .style1 h4 > a{
+            display: block;
+            float: none;
+        }
+
+        .paracraft-mod .style1 h4 > div{
+            float: none;
+            margin-top: 30px;
+        }
+
+        .paracraft-mod .style1 .model-main{
+            width: 100%;
+            left: unset;
+            transform: unset;
+        }
+    }
+
+    /* style2 css */
+    .paracraft-mod .style2{
+        max-width: 1170px;
+        margin: 0 auto;
+        margin-bottom: 39px;
+        padding-top: 51px;
+        padding-bottom: 51px;
+    }
+
+    .paracraft-mod .style2 .world-head{
+        height: 35px;
+    }
+
+    .paracraft-mod .style2 .world-head .world-name,
+    .paracraft-mod .style2 .world-head .username {
+        float: left;
+        margin: 0;
+        margin-right: 30px;
+    }
+
+    .paracraft-mod .style2 .world-head .world-name{
+        font-size: 18px;
+        color: #327ab7;
+        height: 20px;
+    }
+
+    .paracraft-mod .style2 .world-head .username{
+        height: 20px;
+    }
+
+    .paracraft-mod .style2 .world-head .username a{
+        font-size: 14px;
+        margin-top: 2px;
+        color: #0f2639;
+        font-weight: normal;
+    }
+
+    .paracraft-mod .style2 .world-head .world-btn {
+        float: right;
+        width: 110px;
+        margin-left: 30px;
+        text-align: center;
+        margin-top: 0;
+    } 
+
+    .paracraft-mod .style2 .world-body .world-img,
+    .paracraft-mod .style2 .world-body .world-text{
+        float: left;
+    }
+
+    .paracraft-mod .style2 .world-img{
+        float: left;
+        height: 314px;
+        width: 431px;
+        overflow: hidden;
+    }
+
+    .paracraft-mod .style2 .world-img img{
+        min-height: 100%;
+        min-width: 100%;
+    }
+
+    .paracraft-mod .style2 .world-body .world-text{
+        width: 669px;
+        height: 314px;
+        overflow-y: auto;
+        margin-left: 30px;
+        font-size: 16px;
+    }
+
+    .paracraft-mod .style2 .world-btn{
+        text-align: center;
+    }
+
+    .paracraft-mod .style2 .world-btn span{
+        display: inline-block;
+        margin-top: 1px
+    }
+
+    .paracraft-mod .style2 .world-text span{
+        color: #999999;
+    }
+
+    .paracraft-mod .style2 .world-text .world-span{
+        display: block;
+        font-weight: bold;
+    }
+
+    .paracraft-mod .style2 .world-text a{
+        color: #999999;
+    }
+
+    /* style3 css */
+    .paracraft-mod .style3{
+        margin: 0 auto;
+        max-width: 1170px;
+        margin-bottom: 39px;
+        padding-top: 51px;
+        padding-bottom: 51px;
+    }
+
+    .paracraft-mod .style3 .world-img{
+        float: left;
+        height: 314px;
+        width: 417px;
+        overflow: hidden;
+    }
+
+    .paracraft-mod .style3 .world-img img{
+        min-height: 100%;
+        min-height: 100%;
+    }
+
+    .paracraft-mod .style3 .world-text{
+        float:left;
+        margin-left: 48px;
+    }
+
+    .paracraft-mod .style3 .world-text .world-btn{
+        width: 110px;
+        float: left;
+        margin-right: 30px;
+        margin-top: 0px;
+    }
+
+    .paracraft-mod .style3 .world-text .world-name{
+        margin-top:0;
+        margin-bottom: 7px;
+        height: 25px;
+    }
+
+    .paracraft-mod .style3 .world-text .world-name a{
+        font-size:20px;
+        color: #327ab7;
+        font-weight: bold;
+        font-family: 'Microsoft YaHei';
+    }
+
+    .paracraft-mod .style3 .world-text .username{
+        margin-top: 0px;
+        margin-bottom: 33px;
+        height: 15px;
+    }
+
+    .paracraft-mod .style3 .world-text .username a{
+        font-size: 16px;
+        font-family: 'Microsoft YaHei';
+        color: #0f2639;
+        font-weight: normal; 
+    }
+
+    .paracraft-mod .style3 .world-text .world-work{
+        height: 178px;
+        width: 545px;
+        font-size: 13px;
+        overflow-y: auto;
+        margin-bottom: 20px;
+    }
+
+    .paracraft-mod .style3 .world-text .world-work a{
+        white-space: pre-wrap;
+        color: #999999;
+    }
+
+    .paracraft-mod .style3 .world-text .world-work span{
+        color: #999999;
+    }
+
+    .paracraft-mod .style3 .world-text .world-work-span{
+        font-size: 16px;
+        display:block;
+    }
+
+    .world-clear-pointer, .world-clear-pointer a{
+        cursor: default !important;
+    }
+</style>
+
+<div ng-controller="paracraftWorldController" class="paracraft-mod">
+    <div ng-class="{true:'world-clear-pointer'}[editorMode]" ng-if='params.design.text=="style1"' class="style1">
+        <div class="img">
+            <a ng-if="editorMode"
+               ng-hide="params.media_logo.is_mod_hide"
+               ng-click="viewEditorClick(params.media_logo, $event)"
+               href="javascript:void(0)">
+                <img ng-src="{{params.media_logo.text.length == 0 && imgsPath + '3DWorld.jpg' || params.media_logo.text}}">
+            </a>
+            <a ng-if="!editorMode"
+               ng-hide="params.media_logo.is_mod_hide"
+               ng-click="viewEditorClick(params.media_logo, $event)"
+               target="{{params.media_logo.target ? params.media_logo.target : '_blank'}}"
+               ng-href="{{params.media_logo.href}}">
+                <img ng-src="{{params.media_logo.text.length == 0 && imgsPath + '3DWorld.jpg' || params.media_logo.text}}">
+            </a>
+        </div>
+        <div class="text">
+            <h4>
+                <a ng-if="editorMode"
+                   ng-hide="params.link_world_name.is_mod_hide"
+                   ng-click="viewEditorClick(params.link_world_name, $event)"
+                   href="javascript:void(0)">
+                    {{params.link_world_name.text}}
+                </a>
+                <a ng-if="!editorMode" ng-hide="params.link_world_name.is_mod_hide" ng-class="{true:'world-clear-pointer'}[params.link_world_name.href.length == 0]"
+                    target="{{params.link_world_name.target ? params.link_world_name.target : '_blank'}}" ng-href="{{params.link_world_name.href}}">
+                    {{params.link_world_name.text}}</a>
+                <div>
+                    <p ng-hide="params.link_version.is_mod_hide" class="info">
+                        <a ng-if="editorMode" href="javascript:void(0)">
+                            {{params.link_version.desc ? params.link_version.desc : "版本"}}：{{params.link_version.text}}
+                        </a>
+                        <a ng-if="!editorMode" ng-class="{true:'world-clear-pointer'}">
+                            {{params.link_version.desc ? params.link_version.desc : "版本"}}：{{params.link_version.text}}
+                        </a>
+                    <p></p>
+                    <p ng-hide="params.link_update_date.is_mod_hide" class="info">
+                        <a ng-if="editorMode" ng-click="viewEditorClick(params.link_update_date, $event)" href="javascript:void(0)">
+                            {{params.link_update_date.text}}</a>
+                        <a ng-if="!editorMode" ng-class="{true:'world-clear-pointer'}[params.link_update_date.href.length == 0]" target="{{params.link_update_date.target ? params.link_update_date.target : '_blank'}}"
+                            ng-href="{{params.link_update_date.href}}">
+                            {{params.link_update_date.text}}
+                        </a>
+                    </p>
+                </div>
+            </h4>
+            <div class="inner clearfix">
+                <p>
+                    <a ng-if="editorMode"
+                       ng-click="viewEditorClick(params.link_username, $event)"
+                       ng-hide="params.link_username.is_mod_hide"
+                       href="javascript:void(0)">{{params.link_username.desc ? params.link_username.desc : '作者'}}：{{params.link_username.text}}</a>
+                    <a ng-if="!editorMode"
+                       ng-hide="params.link_username.is_mod_hide"
+                       ng-class="{true:'world-clear-pointer'}[params.link_username.href.length == 0]"
+                       target="{{params.link_username.target ? params.link_username.target : '_blank'}}"
+                       ng-href="{{params.link_username.href}}">
+                       {{params.link_username.desc ? params.link_username.desc : '作者'}}：{{params.link_username.text}}
+                    </a>
+                </p>
+                <div class="col-xs-12">
+                    <div class="col-xs-6 info">
+                        <img ng-src="{{imgsPath + 'icon/world3D_eye.png'}}" class="icon" alt="">{{params.viewTimes.desc ? params.viewTimes.desc : '浏览量'}} {{viewTimes}}
+                    </div>
+                    <div ng-hide="params.link_files_totals.is_mod_hide" class="col-xs-6 info">
+                        <a ng-if="editorMode" ng-click="viewEditorClick(params.link_files_totals, $event)" href="javascript:void(0)">
+                            {{params.link_files_totals.desc ? params.link_files_totals.desc : '大小'}} {{getSize(params.link_files_totals.text)}}
+                        </a>
+                        <a ng-if="!editorMode"
+                           ng-class="{true:'world-clear-pointer'}[params.link_files_totals.href.length == 0]"
+                           target="{{params.link_files_totals.target ? params.link_files_totals.target : '_blank'}}"
+                           ng-href="{{params.link_files_totals.href}}">
+                            {{params.link_files_totals.desc ? params.link_files_totals.desc : '大小'}} {{getSize(params.link_files_totals.text)}}
+                        </a>
+                    </div>
+                </div>
+                <div class="col-xs-12 button">
+                    <div class="col-xs-6">
+                        <a ng-if="editorMode"
+                           ng-hide="params.link_world_url.is_mod_hide"
+                           ng-click="viewEditorClick(params.link_world_url, $event)"
+                           href="javascript:void(0)"
+                           class="btn btn-block btn-default">
+                           {{params.link_world_url.desc_download ? params.link_world_url.desc_download : '下载'}}
+                        </a>
+                        <a ng-if="!editorMode"
+                           ng-hide="params.link_world_url.is_mod_hide"
+                           class="btn btn-block btn-default"
+                           ng-class="{true:'world-clear-pointer'}[params.link_world_url.text.length == 0]"
+                           target="{{params.link_world_url.target ? params.link_world_url.target : '_blank'}}"
+                           ng-href="{{params.link_world_url.text}}">
+                           {{params.link_world_url.desc_download ? params.link_world_url.desc_download : '下载'}}
+                        </a>
+                    </div>
+                    <div class="col-xs-6">
+                        <a ng-if="editorMode" ng-hide="params.link_world_url.is_mod_hide" class="btn btn-block btn-primary">
+                            {{params.link_world_url.desc_enter ? params.link_world_url.desc_enter : '进入'}}
+                        </a>
+                        <a ng-if="!editorMode"  ng-hide="params.link_world_url.is_mod_hide" class="btn btn-block btn-primary" ng-click="checkEngine()">
+                            {{params.link_world_url.desc_enter ? params.link_world_url.desc_enter : '进入'}}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mask" ng-show="showModal" ng-click="closeModal()"></div>
+        <div class="model-main" ng-show="showModal">
+            <button type="button" class="close close-icon"><span aria-hidden="true" ng-click="closeModal()">&times;</span></button>
+            <p>{{params.paracraft_info.desc_info ? params.paracraft_info.desc_info : '如果您的设备没有自动使用Paracraft启动3D世界，请安装Paracraft'}}</p>
+            <div class="btn btn-lg btn-default" ng-click="clickDownload()">{{ params.paracraft_info.desc_download ? params.paracraft_info.desc_download : '点击下载' }}</div>
+        </div>
+    </div>
+
+    <div ng-class="{true:'world-clear-pointer'}[editorMode]" ng-if='params.design.text=="style2"' class="style2">
+        <div class="world-head clearfix">
+            <div>
+                <h2 class="world-name">
+                    <a ng-if="editorMode"
+                       ng-hide="params.link_world_name.is_mod_hide"
+                       ng-click="viewEditorClick(params.link_world_name, $event)"
+                       href="javascript:void(0)">
+                        {{params.link_world_name.text}}
+                    </a>
+                    <a ng-if="!editorMode"
+                       ng-hide="params.link_world_name.is_mod_hide"
+                       ng-class="{true:'world-clear-pointer'}[params.link_world_name.href.length == 0]"
+                       target="{{params.link_world_name.target ? params.link_world_name.target : '_blank'}}"
+                       ng-href="{{params.link_world_name.href}}">
+                        {{params.link_world_name.text}}
+                    </a>
+                </h2>
+                <h3 class="username">
+                    <a ng-if="editorMode"
+                       ng-hide="params.link_username.is_mod_hide"
+                       ng-click="viewEditorClick(params.link_username, $event)"
+                       href="javascript:void(0)">
+                       {{params.link_username.desc ? params.link_username.desc : '作者'}}：{{params.link_username.text}}
+                    </a>
+                    <a ng-if="!editorMode"
+                       ng-hide="params.link_username.is_mod_hide"
+                       ng-class="{true:'world-clear-pointer'}[params.link_username.href.length == 0]"
+                       target="{{params.link_username.target ? params.link_username.target : '_blank'}}"
+                       ng-href="{{params.link_username.href}}">
+                       {{params.link_username.desc ? params.link_username.desc : '作者'}}：{{params.link_username.text}}
+                    </a>
+                </h3>
+            </div>
+            <div ng-hide="params.link_world_url.is_mod_hide">
+                <a class="btn btn-block btn-primary world-btn" ng-if="editorMode">{{params.link_world_url.desc_enter ? params.link_world_url.desc_enter : '进入'}}</a>
+                <a class="btn btn-block btn-primary world-btn" ng-if="!editorMode" ng-click="checkEngine()">{{params.link_world_url.desc_enter ? params.link_world_url.desc_enter : '进入'}}</a>
+                
+                <a class="btn btn-block btn-default world-btn" ng-if="editorMode"  ng-click="viewEditorClick(params.link_world_url, $event)" href="javascript:void(0)">
+                    <img ng-src="{{downloadImg}}" alt="">
+                    {{params.link_world_url.desc_download ? params.link_world_url.desc_download : '下载'}}
+                </a>
+                <a class="btn btn-block btn-default world-btn"
+                    ng-if="!editorMode"
+                    ng-class="{true:'world-clear-pointer'}[params.link_world_url.text.length == 0]"
+                    target="{{params.link_world_url.target ? params.link_world_url.target : '_blank'}}"
+                    ng-href="{{params.link_world_url.text}}">
+                    <img ng-src="{{downloadImg}}" alt="">
+                    {{params.link_world_url.desc_download ? params.link_world_url.desc_download : '下载'}}
+                </a>
+            </div>
+        </div>
+        <div class="world-body clearfix">
+            <div class="world-img">
+                <a ng-if="editorMode"
+                   ng-hide="params.media_logo.is_mod_hide"
+                   ng-click="viewEditorClick(params.media_logo, $event)"
+                   href="javascript:void(0)">
+                    <img ng-src="{{params.media_logo.text.length == 0 && imgsPath + '3DWorld.jpg' || params.media_logo.text}}">
+                </a>
+                <a ng-if="!editorMode"
+                   ng-hide="params.media_logo.is_mod_hide"
+                   ng-click="viewEditorClick(params.media_logo, $event)"
+                   target="{{params.media_logo.target ? params.media_logo.target : '_blank'}}"
+                   ng-href="{{params.media_logo.href}}">
+                    <img ng-src="{{params.media_logo.text.length == 0 && imgsPath + '3DWorld.jpg' || params.media_logo.text}}">
+                </a>
+            </div>
+            <div class="world-text">
+                <span ng-hide="params.multiText_desc.is_mod_hide" 
+                      class="world-span">
+                    {{params.multiText_desc.desc ? params.multiText_desc.desc : '作品简介'}}：
+                </span>
+                <a ng-if="editorMode"
+                   ng-hide="params.multiText_desc.is_mod_hide" 
+                   ng-click="viewEditorClick(params.multiText_desc, $event)"
+                   href="javascript:void(0)"
+                   ng-bind-html="subMarkdownRender(params.multiText_desc.text)"></a>
+                <a ng-if="!editorMode"
+                   ng-hide="params.multiText_desc.is_mod_hide" 
+                   ng-class="{true:'world-clear-pointer'}[params.multiText_desc.href.length == 0]"
+                   ng-href="{{params.multiText_desc.href}}"
+                   target="{{params.multiText_desc.target ? params.multiText_desc.target : '_blank'}}"
+                   ng-bind-html="subMarkdownRender(params.multiText_desc.text)"></a>
+            </div>
+        </div>
+    </div>
+
+    <div ng-class="{true:'world-clear-pointer'}[editorMode]" ng-if='params.design.text=="style3"'>
+        <div class="style3 clearfix">
+            <div class="world-img">
+                <a ng-if="editorMode"
+                   ng-hide="params.media_logo.is_mod_hide"
+                   ng-click="viewEditorClick(params.media_logo, $event)"
+                   href="javascript:void(0)">
+                    <img ng-src="{{params.media_logo.text.length == 0 && imgsPath + '3DWorld.jpg' || params.media_logo.text}}">
+                </a>
+                <a ng-if="!editorMode"
+                   ng-hide="params.media_logo.is_mod_hide"
+                   ng-click="viewEditorClick(params.media_logo, $event)"
+                   target="{{params.media_logo.target ? params.media_logo.target : '_blank'}}"
+                   ng-href="{{params.media_logo.href}}">
+                    <img ng-src="{{params.media_logo.text.length == 0 && imgsPath + '3DWorld.jpg' || params.media_logo.text}}">
+                </a>
+            </div>
+            <div class="world-text">
+                <div class="clearfix">
+                    <h2 class="world-name">
+                        <a ng-if="editorMode"
+                           ng-hide="params.link_world_name.is_mod_hide"
+                           ng-click="viewEditorClick(params.link_world_name, $event)"
+                           href="javascript:void(0)">
+                            {{params.link_world_name.text}}
+                        </a>
+                        <a ng-if="!editorMode"
+                           ng-hide="params.link_world_name.is_mod_hide"
+                           ng-class="{true:'world-clear-pointer'}[params.link_world_name.href.length == 0]"
+                           target="{{params.link_world_name.target ? params.link_world_name.target : '_blank'}}"
+                           ng-href="{{params.link_world_name.href}}">
+                            {{params.link_world_name.text}}
+                        </a>
+                    </h2>
+                    <h3 class="username">
+                        <a ng-if="editorMode"
+                           ng-hide="params.link_username.is_mod_hide"
+                           ng-click="viewEditorClick(params.link_username, $event)"
+                           href="javascript:void(0)">
+                           {{params.link_username.desc ? params.link_username.desc : '作者'}}：{{params.link_username.text}}
+                        </a>
+                        <a ng-if="!editorMode"
+                           ng-hide="params.link_username.is_mod_hide"
+                           ng-class="{true:'world-clear-pointer'}[params.link_username.href.length == 0]"
+                           target="{{params.link_username.target ? params.link_username.target : '_blank'}}"
+                           ng-href="{{params.link_username.href}}">
+                           {{params.link_username.desc ? params.link_username.desc : '作者'}}：{{params.link_username.text}}
+                        </a>
+                    </h3>
+                </div>
+                <div class="world-work">
+                    <span ng-hide="params.multiText_desc.is_mod_hide" class="world-work-span">{{params.multiText_desc.desc ? params.multiText_desc.desc : '作品简介'}}：</span>
+                    <a ng-if="editorMode"
+                       ng-hide="params.multiText_desc.is_mod_hide"
+                       ng-click="viewEditorClick(params.multiText_desc, $event)"
+                       href="javascript:void(0)"
+                       ng-bind-html="subMarkdownRender(params.multiText_desc.text)"></a>
+                    <a ng-if="!editorMode"
+                       ng-hide="params.multiText_desc.is_mod_hide"
+                       ng-class="{true:'world-clear-pointer'}[params.multiText_desc.href.length == 0]"
+                       ng-href="{{params.multiText_desc.href}}"
+                       target="{{params.multiText_desc.target ? params.multiText_desc.target : '_blank'}}"
+                       ng-bind-html="subMarkdownRender(params.multiText_desc.text)"></a>
+                </div>
+                <div ng-hide="params.link_world_url.is_mod_hide">
+                    <a class="btn btn-block btn-default world-btn" ng-if="editorMode"  ng-click="viewEditorClick(params.link_world_url, $event)" href="javascript:void(0)">
+                        <img ng-src="{{downloadImg}}" alt="">
+                        {{params.link_world_url.desc_download ? params.link_world_url.desc_download : '下载'}}
+                    </a>
+                    <a class="btn btn-block btn-default world-btn"
+                       ng-if="!editorMode"
+                       ng-class="{true:'world-clear-pointer'}[params.link_world_url.text.length == 0]"
+                       target="{{params.link_world_url.target ? params.link_world_url.target : '_blank'}}"
+                       ng-href="{{params.link_world_url.text}}">
+                        <img ng-src="{{downloadImg}}" alt="">
+                        {{params.link_world_url.desc_download ? params.link_world_url.desc_download : '下载'}}
+                    </a>
+                    <a class="btn btn-block btn-primary world-btn" ng-if="!editorMode" ng-click="checkEngine()">{{params.link_world_url.desc_enter ? params.link_world_url.desc_enter : '进入'}}</a>
+                    <a class="btn btn-block btn-primary world-btn" ng-if="editorMode">{{params.link_world_url.desc_enter ? params.link_world_url.desc_enter : '进入'}}</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

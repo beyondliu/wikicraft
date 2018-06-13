@@ -12,7 +12,7 @@ include_once("./abstract/base.page");
 include_once("./user.page");
 
 local website_comment=inherit(models.abstract.base, gettable("models.website_comment"))
-website_comment.db_name = "website_works"
+website_comment.db_name = "website_comment"
 
 function website_comment:ctor()
 	self:addfield("url", "string")           -- 页面ID
@@ -24,6 +24,18 @@ function website_comment:ctor()
 
 	self:addfield("createTime", "string")
 	self:addfield("updateTime", "string")
+end
+
+
+function website_comment:getCountByUrl(params)
+	if not params.url then
+		return 0
+	end
+
+	self:db():count({["+url"]={params.url}}, resume)
+	local err, count = yield()
+
+	return count or 0
 end
 
 -- 创建一条评论

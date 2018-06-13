@@ -17,6 +17,7 @@ define([
     'text!html/wikiEditor.html',
     'controller/editWebsiteController',
     'controller/bigfileController',
+	'controller/moduleEditorController',
     'codemirror/mode/markdown/markdown',
     // 代码折叠
     'codemirror/addon/fold/foldgutter',
@@ -33,9 +34,8 @@ define([
     'codemirror/addon/search/jump-to-line',
     'codemirror/addon/scroll/annotatescrollbar',
     'codemirror/addon/display/fullscreen',
-    'bootstrap-treeview',
-    'qiniu',
-], function (app, /*html2canvas,*/ markdownit, toMarkdown, CodeMirror, markdownwiki, util, storage, dataSource, mdconf, qiniu, htmlContent, editWebsiteHtmlContent, bigfileContent) {
+    'bootstrap-treeview'
+], function (app, /*html2canvas,*/ markdownit, toMarkdown, CodeMirror, markdownwiki, util, storage, dataSource, mdconf, qiniu, htmlContent, editWebsiteHtmlContent, bigfileContent, moduleEditorContent) {
     var otherUserinfo = undefined;
     var pageSuffixName = config.pageSuffixName;
     var mdwiki = markdownwiki({editorMode: true, breaks: true, isMainMd:true});
@@ -257,7 +257,7 @@ define([
                       $rootScope.img = $scope.img;
                       $uibModalInstance.close("img");
                     }, function(err) {
-                      console.log(err);
+                    //   console.log(err);
                       $scope.imgErr = "图片上传失败，请稍后重试";
                     });
             }else{
@@ -289,7 +289,7 @@ define([
         }
 
 		$scope.video_insert = function () {
-			console.log(result);
+			// console.log(result);
 			if ($scope.videoUrl) {
 				result.url = $scope.videoUrl;
 				result.isNetUrl = true;
@@ -332,13 +332,13 @@ define([
 
 					var currentDataSource = getCurrentDataSource();
 					if (!currentDataSource) {
-						console.log("当前数据不可用!!!");
+						// console.log("当前数据不可用!!!");
 						return;
 					}
 
 					currentDataSource.writeFile({path:path + config.pageSuffixName, content:content}, function(){
 						result.filename = data.filename;
-						result.url = "http://keepwork.com" + path;
+						result.url = config.httpProto+"://keepwork.com" + path;
 						$scope.filename = data.filename;
 						util.$apply($scope);
 						currentDataSource.getLastCommitId();
@@ -348,7 +348,7 @@ define([
 				},
 
 				failed: function() {
-					console.log("上传文件失败");
+					// console.log("上传文件失败");
 				},
 			};
 			qiniu.upload(opt);
@@ -438,7 +438,7 @@ define([
         }
 
         function initPageTemplates() {
-            var url = "http://git.keepwork.com/api/v4/projects/6803/repository/files/official%2Ftemplate%2FpageTemplateConfig%2Emd?ref=master";
+            var url = config.keepworkOfficialGitHost + "/api/v4/projects/6803/repository/files/official%2Ftemplate%2FpageTemplateConfig%2Emd?ref=master";
             var isShowLoading = true;
             $http({
                 "method": "GET",
@@ -455,7 +455,7 @@ define([
                     $scope.activePageTemplate= $scope.pageTemplates[0];
                     $scope.websitePage.template = $scope.activePageTemplate.templates[0];
                 } catch (e) {
-                    console.log(e);
+                    // console.log(e);
                 }
             }, function () {
 
@@ -599,7 +599,7 @@ define([
                 }
             });//}}}
 
-            console.log("wikiEditorController");//{{{
+            // console.log("wikiEditorController");//{{{
             $rootScope.frameFooterExist = false;
             $rootScope.frameHeaderExist = false;
             $rootScope.userinfo = $rootScope.user;
@@ -619,6 +619,8 @@ define([
             $scope.showView=true;
             $scope.full=false;
             $scope.opens={};
+
+            var fakeIconDom = [];
             var dropFiles = {};
             var isBigfileModalShow = false;
             var isConfirmDialogShow = false;
@@ -941,14 +943,14 @@ define([
 
                 var currentDataSource = getCurrentDataSource();
                 var page = angular.copy(currentPage);
-                console.log(currentPage);
+                // console.log(currentPage);
                 var content = page.content || editor.getValue();
 				page.timestamp = (new Date()).getTime();
 				page.content = content;
                 var saveFailedCB = function () {
                     page.isModify = true;
                     storage.indexedDBSetItem(config.pageStoreName, page);
-                    console.log("---------save failed-------");
+                    // console.log("---------save failed-------");
                     errcb && errcb();
                 };
                 var saveSuccessCB = function () {
@@ -959,7 +961,7 @@ define([
                     storage.indexedDBSetItem(config.pageStoreName, page);
 					storage.sessionStorageRemoveItem(page.url);
                     indexDBDeletePage(page.url, true);
-                    console.log("---------save success-------");
+                    // console.log("---------save success-------");
 					updateLastCommitId(currentDataSource, page);
                     cb && cb();
                 };
@@ -1004,7 +1006,7 @@ define([
 				//console.log(params);
                 var currentDataSource = dataSource.getDataSource(params.username, params.sitename);
                 if (!currentDataSource) {
-                    console.log("current data source unset!!!");
+                    // console.log("current data source unset!!!");
                     return;
                 }
 
@@ -1026,7 +1028,7 @@ define([
                         cb && cb();
                         //console.log(data);
                     },function () {
-                        console.log("get pagelist failed!!!");
+                        // console.log("get pagelist failed!!!");
                         errcb && errcb();
                     });
                 } else {
@@ -1229,6 +1231,9 @@ define([
 							return ;	
 						}
 
+						var moduleEditorParams = config.shareMap.moduleEditorParams;
+						moduleEditorParams.show_type = "knowledge";
+						moduleEditorParams.setKnowledge("");
                         setEditorValue(page, content);
 					}
                     getCurrentPageContent(page, function (data) {
@@ -1255,9 +1260,14 @@ define([
                     var currentDataSource = dataSource.getDataSource(page.username, page.sitename);
                     //console.log(currentDataSource);
                     if (currentDataSource) {
-                        currentDataSource.getRawContent({path: url + pageSuffixName}, function (data) {
+                        //currentDataSource.getRawContent({path: url + pageSuffixName}, function (data) {
+                        currentDataSource.getFile({path: url + pageSuffixName}, function (data) {
                             //console.log(data);
-                            cb && cb(data);
+                            cb && cb(data.content);
+							currentDataSource.getSingleCommit({sha:data.last_commit_id}, function(data){
+								page.committer_name = data.committer_name;
+								page.committed_date = data.committed_date;
+							})
                         }, errcb);
                     } else {
                         //console.log("----------data source uninit-------------");
@@ -1398,13 +1408,13 @@ define([
                     if (cmd.substr(0, 1) == '&') {
                         switch (cmd.substring(1)) {
                             case 'new':
-                                console.log('command:new');
+                                // console.log('command:new');
                                 break;
                             case 'ws':
-                                console.log('command:ws');
+                                // console.log('command:ws');
                                 break;
                             default:
-                                console.log('command:undefined!' + cmd);
+                                // console.log('command:undefined!' + cmd);
                                 break;
                         }
                     }
@@ -1413,7 +1423,11 @@ define([
             }//}}}
 
 
-            $scope.openWikiBlock = function () {//{{{
+            $scope.openWikiBlock = function (insertLine, type) {//{{{
+                $scope.insertMod = {
+                    "insertLine": insertLine,
+                    "type": type
+                };
                 function formatWikiCmd(text) {
                     var lines = text.split('\n');
                     var startPos = undefined, endPos = undefined;
@@ -1442,29 +1456,39 @@ define([
                         }
                         return newText;
                     } catch (e) {
-                        console.log(e);
-                        return lines.slice(0, startPos + 1).join('\n') + '\n' + lines.slice(endPos).join('\n');
+                        // console.log(e);
+                        return lines.slice(0, startPos + 1).join('\n') + '\n' + paramsText + '\n' + lines.slice(endPos).join('\n');
                     }
                 }
 
-                //console.log('openWikiBlock');
                 modal('controller/wikiBlockController', {
                     controller: 'wikiBlockController',
                     size: 'lg',
                     backdrop:true
                 }, function (wikiBlock) {
-                    //console.log(wikiBlock);
                     var wikiBlockContent = formatWikiCmd(wikiBlock.content);
                     var cursor = editor.getCursor();
-                    var content = editor.getLine(cursor.line);
-                    if (content.length > 0) {
-                        wikiBlockContent = '\n' + wikiBlockContent;
-                    }
-                    editor.replaceSelection(wikiBlockContent);
+                    var toInsertLine = ($scope.insertMod.insertLine >= 0) ? $scope.insertMod.insertLine : cursor.line;
+                    var content = editor.getLine(toInsertLine);
+                    wikiBlockContent = '\n' + wikiBlockContent + '\n';
+                    editor.replaceRange(wikiBlockContent, {
+                        "line": toInsertLine,
+                        "ch": 0
+                    });
                 }, function (result) {
-                    console.log(result);
+                    // console.log(result);
                 });
             }//}}}
+
+            $rootScope.insertMod = function(type){
+                var moduleEditorParams = config.shareMap.moduleEditorParams || {};
+                var modPositon = moduleEditorParams.wikiBlock.blockCache.block.textPosition;
+                if (type == "before") {
+                    $scope.openWikiBlock(modPositon.from, type);
+                }else {
+                    $scope.openWikiBlock(modPositon.to, type);
+                }
+            }
 
             $scope.openGitFile = function () {//{{{
                 if (!currentPage || !currentPage.url) {
@@ -1485,7 +1509,7 @@ define([
             }//}}}
 
             function getPageTemplateContent(pageUrl, contentUrl) {
-                var url = "http://git.keepwork.com/api/v4/projects/6803/repository/files/" + encodeURI(contentUrl) + "?ref=master";
+                var url = config.keepworkOfficialGitHost + "/api/v4/projects/6803/repository/files/" + encodeURI(contentUrl) + "?ref=master";
                 $http({
                     "method": "GET",
                     "url": url
@@ -1497,7 +1521,7 @@ define([
                     try {
                         allWebstePageContent[pageUrl] = content;
                     } catch (e) {
-                        console.log(e);
+                        // console.log(e);
                     }
                     openPage(false);
                 }, function () {
@@ -1526,6 +1550,13 @@ define([
                             allPageMap[currentPage.url] = currentPage;
                             currentSite = getCurrentSite();
                             initTree();
+                            util.post(config.apiUrlPrefix + "pages/insert", {
+                                url: currentPage.url 
+                            }, function(data){
+                                console.log(data);
+                            }, function(err){
+                                console.log(err);
+                            });
                         }
                     }, function (text, error) {
                         return;
@@ -1542,6 +1573,19 @@ define([
                 event && event.stopPropagation();
             };//}}}
 
+            var updateSearchPageContent = function() {
+                var url = currentPage.url;
+                var pageContent = currentPage.content;
+                util.post(config.apiUrlPrefix + 'pages/updateContent', {
+                    "url": url,
+                    "content": pageContent
+                }, function(result) {
+                    console.log(result);
+                }, function(err) {
+                    console.log(err);
+                });
+            }
+
             //保存页面
             $scope.cmd_savepage = function (cb, errcb) {//{{{
                 if (!isEmptyObject(currentPage)) {//修改
@@ -1553,6 +1597,7 @@ define([
                         initTree();
                         cb && cb();
                         Message.info("文件保存成功");
+                        updateSearchPageContent();
                     }, function () {
                         errcb && errcb();
                         Message.danger("文件保存失败");
@@ -1600,9 +1645,14 @@ define([
                         var currentDataSource = dataSource.getDataSource(page.username, page.sitename);
 
                         currentDataSource && currentDataSource.deleteFile({path: page.url + pageSuffixName}, function () {
-                            console.log("删除文件成功:");
+                            // console.log("删除文件成功:");
+                            util.http("DELETE", config.apiUrlPrefix + "pages/delete", {
+                                url: page.url
+                            }, function(){}, function(err){
+                                console.log(err);
+                            })
                         }, function (response) {
-                            console.log("删除文件失败:");
+                            // console.log("删除文件失败:");
                         });
 
                         storage.indexedDBDeleteItem(config.pageStoreName, page.url);
@@ -1646,7 +1696,7 @@ define([
 
             //关闭全部已打开
             $scope.cmd_closeAll = function (url) {//{{{
-				console.log(url);
+				// console.log(url);
 				url = url || "";
                 for (key in $scope.opens){
 					if (key.indexOf(url) >= 0) {
@@ -1657,7 +1707,7 @@ define([
 
             $scope.cmd_goSetting = function (urlKey, event) {//{{{
                 var website = allSiteMap[urlKey];
-                console.log(website);
+                // console.log(website);
                 event && event.stopPropagation();
                 storage.sessionStorageSetItem('userCenterContentType', 'editWebsite');
                 storage.sessionStorageSetItem("editWebsiteParams", website);
@@ -1699,7 +1749,7 @@ define([
 				
 				util.batchRun(fnList, function(){
                     callback();
-                    console.log("全部保存结束");
+                    // console.log("全部保存结束");
 				});
             };//}}}
 
@@ -1749,15 +1799,15 @@ define([
                     var path = websiteFile.url + config.pageSuffixName;
                     var currentDataSource = dataSource.getDataSource(websiteFile.username, websiteFile.sitename);
                     if (!currentDataSource) {
-                        console.log(websiteFile);
+                        // console.log(websiteFile);
                     } else {
                         currentDataSource.writeFile({path:path, content:"占位文件"}, function(){
-                            console.log("创建成功");
+                            // console.log("创建成功");
                             initTree();
                             allPageMap[websiteFile.url] = angular.copy(websiteFile);
                             //console.log(allPageMap);
                         }, function() {
-                            console.log("创建失败");
+                            // console.log("创建失败");
                         });
                     }
 				}, function (text, error) {
@@ -2026,8 +2076,8 @@ define([
                         editor.focus();
                     }
                 }, function (text, error) {
-                    console.log('text:' + text);
-                    console.log('error:' + error);
+                    // console.log('text:' + text);
+                    // console.log('error:' + error);
                     return;
                 });
             }
@@ -2069,8 +2119,8 @@ define([
                         editor.focus();
                     }
                 }, function (text, error) {
-                    console.log('text:' + text);
-                    console.log('error:' + error);
+                    // console.log('text:' + text);
+                    // console.log('error:' + error);
                     return;
                 });
             }
@@ -2081,7 +2131,7 @@ define([
                     templateUrl: config.htmlPath + "editorInsertImg.html",
                     controller: "imgCtrl",
                 }).result.then(function (provider) {
-                    console.log(provider);
+                    // console.log(provider);
                     if (provider == "img") {
                         var url = $rootScope.img.url;
                         var txt = $rootScope.img.txt;
@@ -2108,8 +2158,8 @@ define([
                         editor.focus();
                     }
                 }, function (text, error) {
-                    console.log('text:' + text);
-                    console.log('error:' + error);
+                    // console.log('text:' + text);
+                    // console.log('error:' + error);
                     return;
                 });
             }
@@ -2120,7 +2170,7 @@ define([
                     templateUrl: config.htmlPath + "editorInsertVideo.html",
                     controller: "videoCtrl",
                 }).result.then(function (result) {
-					console.log(result);
+					// console.log(result);
                     if (result) {
 						var videoContent = "";
 						if (result.isNetUrl) {
@@ -2146,7 +2196,7 @@ define([
                 });
                 bigfileModal.result.then(function (wikiBlock) {
                     isBigfileModalShow = false;
-                    console.log(wikiBlock);
+                    // console.log(wikiBlock);
                 }, function (files) {
                     isBigfileModalShow = false;
                     if (!files){
@@ -2154,7 +2204,7 @@ define([
                     }
 
                     var insertContent = "";
-                    console.log(files);
+                    // console.log(files);
                     if (files.pasteUrl){
                         insertContent = files.pasteUrl;
                     } else if (files.url){
@@ -2243,14 +2293,14 @@ define([
                                 this.start();
                             },
                             "BeforeUpload": function (up, file) {
-                                console.log("BeforeUpload");
+                                // console.log("BeforeUpload");
                             },
                             "UploadProgress": function (up, file) {
                                 var uploadInfo = "***网盘： 正在上传文件 " + file.loaded + "/" + file.size + "(" + file.percent + "%),上传完成后可以在网盘中进行管理，上传过程中请不要刷新窗口***";
                                 line_keyword_nofocus(dropFiles[file.name].insertLinum, uploadInfo, 0);
                             },
                             "FileUploaded": function (up, file, info) {
-                                console.log("FileUploaded");
+                                // console.log("FileUploaded");
                                 var lineNo = dropFiles[file.name].insertLinum;
                                 line_keyword_nofocus(lineNo, file.name);
                                 var params = {
@@ -2276,12 +2326,12 @@ define([
                                 }, false);
                             },
                             "UploadComplete": function (up, files, info) {
-                                console.log("UploadComplete");
+                                // console.log("UploadComplete");
                                 // setBigfileValue();
                             },
                             "Error": function (up, file, errTip) {
-                                console.log(file.file);
-                                console.log(dropFiles[file.name]);
+                                // console.log(file.file);
+                                // console.log(dropFiles[file.name]);
                                 line_keyword_nofocus(dropFiles[file.file.name].insertLinum, "***上传出错了，请重试，或者在网盘上传重试***", 0);
                             }
                         }
@@ -2295,10 +2345,10 @@ define([
                             };
                             qiniuBack = qiniu.uploader(option);
                         }else{
-                            console.log("uid获取失败");
+                            // console.log("uid获取失败");
                         }
                     }, function () {
-                        console.log("uid获取失败");
+                        // console.log("uid获取失败");
                     });
                 };
                 initQiniu();
@@ -2354,7 +2404,7 @@ define([
 					var fileReader = new FileReader();
 					var cursor = editor.getCursor();
 					fileReader.onloadstart = function () {
-                        console.log("fileLoadStart");
+                        // console.log("fileLoadStart");
                         var insertLineNum = getEmptyLine(cursor.line);
                         dropFiles[fileObj.name].insertLinum = insertLineNum;
                         var onloadInfo = "***正在获取文件 0/"+ fileObj.size +"***";
@@ -2369,7 +2419,7 @@ define([
 					fileReader.onload = function () {
                         if (fileObj.size > UpperLimit || /video\/\w+/.test(fileObj.type)){ // 上传到七牛
                             var cmd_bigfile = function(fileObj) {
-                                console.log(fileObj.name);
+                                // console.log(fileObj.name);
                                 var msg = "editorUploadFile";
                                 var data = dropFiles[fileObj.name];
                                 line_keyword_nofocus(dropFiles[fileObj.name].insertLinum, "**已选择使用上传工具上传 "+fileObj.name+"。**", 0);
@@ -2396,12 +2446,12 @@ define([
                                 if (confirmFilesQue.length > 0) {
                                     confirmFun(confirmFilesQue[0]);
                                     confirmFilesQue.shift();
-                                    console.log(confirmFilesQue);
+                                    // console.log(confirmFilesQue);
                                 }
                             }
 
                             var editorToQiniu = function(fileObj) {
-                                console.log("正在上传到七牛");
+                                // console.log("正在上传到七牛");
                                 $scope.storeInfoByte.used += fileObj.size || 0;
                             
                                 if ($scope.storeInfoByte.used > $scope.storeInfoByte.total){
@@ -2414,7 +2464,7 @@ define([
                                 if (confirmFilesQue.length > 0) {
                                     confirmFun(confirmFilesQue[0]);
                                     confirmFilesQue.shift();
-                                    console.log(confirmFilesQue);
+                                    // console.log(confirmFilesQue);
                                 }
                             }
 
@@ -2469,7 +2519,7 @@ define([
 
                             if (fileObj.size > BrowerUpperLimit) {
                                 if (isBigfileModalShow) {
-                                    console.log(isBigfileModalShow);
+                                    // console.log(isBigfileModalShow);
                                     cmd_bigfile();
                                     return;
                                 }
@@ -2485,7 +2535,7 @@ define([
                                 editorToQiniu(fileObj);
                             }
                         }else{ // 上传到数据源
-                            console.log("正在上传到数据源");
+                            // console.log("正在上传到数据源");
                             if (/image\/\w+/.test(fileObj.type)) {
                                 currentDataSource.uploadImage({content: fileReader.result}, function (img_url) {
                                     //console.log(img_url);
@@ -2502,7 +2552,7 @@ define([
                                     currentDataSource.getLastCommitId(callback, callback, false);
                                 }, function(response){
                                     Message.danger(response.data.message);
-                                    console.log(data);
+                                    // console.log(data);
                                 });
                             }
                         }
@@ -2549,9 +2599,9 @@ define([
                     backdrop: true,
                     scope: $scope
                 }, function (wikiBlock) {
-                    console.log(wikiBlock);
+                    // console.log(wikiBlock);
                 }, function (result) {
-                    console.log(result);
+                    // console.log(result);
                 });
             }//}}}
 
@@ -2583,13 +2633,20 @@ define([
                 storage.indexedDBSetItem(config.pageStoreName, currentPage, cb, errcb); // 每次改动本地保存
             }//}}}
 
+			function initModuleEditor() {
+				util.html("#moduleEditor", moduleEditorContent);
+				// $("#moduleEditorContainer").hide();
+			}
+
             function initEditor() {
                 //console.log("initEditor");
 				//{{{
                 if (editor || (!document.getElementById("source"))) {
-                    console.log("init editor failed");
+                    // console.log("init editor failed");
                     return;
                 }
+
+				initModuleEditor();
 
                 var winWidth = $(window).width();
                 if (winWidth<992){
@@ -2733,6 +2790,7 @@ define([
                         },
                     }
                 });
+                $rootScope.editor = editor;
 				//}}}
                 //var viewEditorTimer = undefined;//{{{
                 //$('body').on('focus', '[contenteditable]', function () {
@@ -2765,6 +2823,7 @@ define([
                 //});
 
                 mdwiki.setEditor(editor);
+				config.shareMap.mdwiki = mdwiki;
 
                 var scrollTimer = undefined, changeTimer = undefined;
 					var isScrollPreview = false;
@@ -2778,7 +2837,7 @@ define([
                             {
                                 filter: 'div',
                                 replacement: function (content) {
-                                    console.log(content);
+                                    // console.log(content);
                                     return '\n' + content + '\n';
                                 }
                             }
@@ -2812,7 +2871,13 @@ define([
                     //return result;
                 //};
 
+				editor.on("cursorActivity", function(cm){
+					mdwiki.cursorActivity();
+				});
+
                 editor.on("change", function (cm, changeObj) {
+                    var moduleEditorParams = config.shareMap.moduleEditorParams || {};
+                    var isStopRender = moduleEditorParams.renderMod == "editorToCode";
                     changeCallback(cm, changeObj);
 
                     if (currentPage && currentPage.url) {
@@ -2820,18 +2885,26 @@ define([
                     }
 
                     renderTimer && clearTimeout(renderTimer);
-                    renderTimer = setTimeout(function () {
+                    renderTimer = setTimeout((function (isStopRender) {
+                        renderAutoSave();
+                        //if (isStopRender){
+                            //moduleEditorParams.renderMod = undefined;
+                            //return;
+                        //}
                         var text = editor.getValue();
                         //if((!currentSite || currentSite.sensitiveWordLevel & 1) <= 0){
                             //text = filterSensitive(text) || text;
                         //}
                         mdwiki.render(text);
-                        renderAutoSave();
+
+                        //var toLineInfo = changeObj && editor.lineInfo(changeObj.to.line);
+                        //moduleEditorParams.show_type = "knowledge";
+                        //moduleEditorParams.setKnowledge(toLineInfo ? toLineInfo.text:"");
 
                         timer = undefined;
-                    }, 100);
+                    })(isStopRender));
                 });
-                mdwiki.bindRenderContainer(".result-html");
+                mdwiki.bindRenderContainer(".result-html", ".tpl-header-container");
                 editor.focus();
                 setEditorHeight();
 //}}}
@@ -2906,7 +2979,7 @@ define([
                 // 下拉框选择比例
                 $scope.changeScale = function (scaleItem) {
                     $scope.enableTransform = false;
-                    console.log(scaleItem);
+                    // console.log(scaleItem);
                     resizeMod(scaleItem.scaleValue,scaleItem);
                 }
 
@@ -3036,10 +3109,13 @@ define([
                     setTimeout(function () {
                         var wikiEditorContainer = $('#wikiEditorContainer')[0];
                         var wikiEditorPageContainer = $('#wikiEditorPageContainer')[0];
+                        var attEditHeight = $("#moduleEditorContainer").height();
                         var height = (wikiEditorPageContainer.clientHeight - wikiEditorContainer.offsetTop) + 'px';
-                        editor.setSize('auto', height);
+                        var noAttEditHeight = (wikiEditorPageContainer.clientHeight - wikiEditorContainer.offsetTop - attEditHeight) + 'px';
+                        editor.setSize('auto', noAttEditHeight);
                         $('#wikiEditorContainer').css('height', height);
                         $('.full-height').css('height', height);
+                        $('.full-noAttr-height').css('height', noAttEditHeight);
 
                         var w = $("#__mainContent__");
                         w.css("min-height", "0px");
@@ -3280,6 +3356,7 @@ define([
                     var scaleSize=getScaleSize();
                     $scope.scales[$scope.scales.length-1].scaleValue=scaleSize;
                     $scope.scaleSelect=$scope.scales[$scope.scales.length-1];//比例的初始状态为 “适合宽度”
+                    $rootScope.scaleSelect = $scope.scaleSelect;
                     util.$apply();
                 }
 
@@ -3299,7 +3376,7 @@ define([
                         size: 'lg',
                         backdrop: 'static'
                     }, function (wikiBlock) {
-                        console.log(wikiBlock);
+                        // console.log(wikiBlock);
                     }, function (result) {
                         if (result.finished){
                             var key = result.website.username + "_" + result.website.name;
@@ -3451,7 +3528,7 @@ define([
                 });
 
                 $('.toolbar-page-hotkey').on('click', function () {
-                    console.log('toolbar-page-hotkey');
+                    // console.log('toolbar-page-hotkey');
                     $('#hotkeyModal').modal({
                         keyboard: true
                     })
@@ -3526,7 +3603,7 @@ define([
                         resolve(result);
                     }, function (err) {
                         // console.log(err);
-                        reject(err);
+                        // reject(err);
                     }, false);
                 });
 
@@ -3548,7 +3625,7 @@ define([
                             fileUpload(file);
                         }
                     }, function (err) {
-                        console.log(err);
+                        // console.log(err);
                     });
 
                     e.preventDefault();
@@ -3594,7 +3671,7 @@ define([
                     col2Width=parseInt(col2.width(),10);
                     startX=event.clientX;
                     $(".CodeMirror").on("mousemove",mousemoveEvent);
-                    $(".result-html").on("mousemove",mousemoveEvent);
+                    $("#preview").on("mousemove",mousemoveEvent);
                     $(".code-view").on("mouseup",mouseupEvent);
                 });
 
@@ -3616,9 +3693,9 @@ define([
 
                 var mouseupEvent = function(){
                     $(".CodeMirror").off("mousemove",mousemoveEvent);
-                    $(".result-html").off("mousemove",mousemoveEvent);
+                    $("#preview").off("mousemove",mousemoveEvent);
                     $(".CodeMirror").off("mouseup",mouseupEvent);
-                    $(".result-html").off("mouseup",mouseupEvent);
+                    $("#preview").off("mouseup",mouseupEvent);
                 };
                 return editor;
 				//}}}

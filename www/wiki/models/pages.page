@@ -1,0 +1,647 @@
+<?npl
+--[[
+Title: pages
+Author: ZhengJiabiao
+Date: 2018/1
+Desc: pages of a website
+]]
+
+
+include_once("./abstract/base.page")
+include_once("./elasticsearch.page")
+include_once("./validators.page")
+include_once("./pages_stars.page")
+include_once("./website.page")
+include_once("./tags.page")
+include_once("./user_tags.page")
+include_once("./site_data_source.page")
+include_once("./site_user.page")
+
+
+local pages = inherit(models.abstract.base, gettable("models.pages"))
+pages.db_name = "pages"
+local validators = models.validators:new()
+local es = models.elasticsearch:new()
+local index = CURRENT_ENV .. "_kw_pages"
+es:connect({index=index})
+
+
+function pages:ctor()
+    self:addfield("url", "string", true) -- /user/site/page
+    self:addfield("siteUrl", "string", false) -- /user/site
+    self:addfield("visitCount", "number", false)
+    self:addfield("tags", "table", false, 5)
+end
+
+
+function pages:check_identity(params)
+    local allowed = util:check_identity(params)
+    if (not allowed) then
+        if self:check_permission(params) then return end
+        local message = "You are not allowed to do it"
+        errors:raise(403, message)
+    end
+end
+
+
+function pages:check_permission(params)
+    local site_owner, sitename = util:get_username_and_sitename(params.url)
+    local memberName = getUsername()
+    local site_userDB = models.site_user:new()
+    local data = site_userDB:api_getSiteByName({
+        username = site_owner,
+        sitename = sitename,
+        memberName = memberName
+    }).data or {}
+
+    if data.siteUser and data.siteinfo then
+        return true
+    end
+
+    return false
+end
+
+
+function pages:api_insert(params)
+    self:ensureAuthenticated()
+    self:check_identity(params)
+    local page = self:insert_validator(params)
+
+    self:db():insertOne({["+url"] = {page.url}}, page, resume)
+    local err, result = yield()
+    if (result) then
+        params.id = result._id
+        self:insert_to_es(params)
+        result = {url = result.url, tags = result.tags or {}}
+        self:save_tags_for_analysis(result)
+    end
+    return errors:wrap(err, result)
+end
+
+
+function pages:insert_validator(params)
+    local clean_data = {}
+    local validate_tasks = {
+            required_fields = {"url"},
+            fields_not_empty = {"url"},
+            fields_length = {tags = 5},
+            sensitive_fields = {"tags"},
+            fields_and_model = {
+                index_fields = {"url"},
+                model_instance = self
+            },
+         }
+
+    validators:add_validate_tasks(validate_tasks, params)
+    local params_error, message = validators:get_validate_result()
+    if (params_error) then errors:raise(400, message) end
+
+    clean_data = {
+        url = params.url,
+        tags = params.tags,
+        siteUrl = self:get_site_url(params),
+    }
+    return clean_data
+end
+
+
+function pages:get_site_url(params)
+    local site_url
+    local username, sitename
+    if (not params.username) and (params.url) then
+        username, sitename = self:get_username_and_sitename(params.url)
+    else
+        username, sitename = params.username, params.sitename
+    end
+    site_url = "/" .. username
+    if (sitename) then site_url = site_url .. "/" .. sitename end
+    return site_url
+end
+
+
+function pages:get_username_and_sitename(url)
+    local splited_url = commonlib.split(url, "/")
+    return splited_url[1], splited_url[2]
+end
+
+
+function pages:api_updateTags(params)
+    if (params.url) then
+        self:db():findOne({["+url"]={params.url}}, resume)
+        local err, result = yield()
+        if (not result) then return self:api_insert(params) end
+    end
+
+    self:ensureAuthenticated()
+    self:check_identity(params)
+    local page = self:update_tags_validator(params)
+
+    self:db():updateOne({["+url"] = {page.url}}, {tags = page.tags}, resume)
+    local err, result = yield()
+    if (result) then
+        params.id = result._id
+        self:update_to_es(params)
+        result = {url = result.url, tags = result.tags or {}}
+        self:save_tags_for_analysis(result)
+    end
+    return errors:wrap(err, result)
+end
+
+
+function pages:update_tags_validator(params)
+    local clean_data = {}
+
+    local validate_tasks = {
+        required_fields = {"url"},
+        -- required_fields = {"url", "tags"},
+        sensitive_fields = {"tags"},
+        fields_length = {tags = 5},
+    }
+    validators:add_validate_tasks(validate_tasks, params)
+    local params_error, message = validators:get_validate_result()
+    if (params_error) then errors:raise(400, message) end
+
+    clean_data = {
+        url = params.url,
+        tags = params.tags,
+    }
+    return clean_data
+end
+
+
+function pages:save_tags_for_analysis(params)
+    local tags_model = models.tags:new()
+    local user_tags_model = models.user_tags:new()
+    tags_model:insert(params)
+    user_tags_model:insert(params)
+end
+
+
+function pages:api_updateContent(params)
+    if (params.url) then
+        self:db():findOne({["+url"]={params.url}}, resume)
+        local err, result = yield()
+        if (not result) then
+            return self:api_insert(params)
+        else
+            params.id = result._id
+        end
+    end
+
+    self:ensureAuthenticated()
+    self:check_identity(params)
+    local page = self:update_content_validator(params)
+    self:update_to_es(page)
+    return errors:wrap(nil)
+end
+
+
+function pages:update_content_validator(params)
+    local clean_data = {}
+    local required_fields = {"url", "content"}
+    local params_error, message = validators.required_fields_validator(params, required_fields)
+    if (params_error) then errors:raise(400, message) end
+
+    clean_data = {
+        id = params.id,
+        url = params.url,
+        content = params.content,
+    }
+    return clean_data
+end
+
+
+function pages:api_star(params)
+    local stars = models.pages_stars:new()
+    return stars:star(params)
+end
+
+
+function pages:api_updateVisitCount(params)
+    local required_fields = {"url"}
+    local params_error, message = validators.required_fields_validator(params, required_fields)
+    if (params_error) then errors:raise(400, message) end
+
+    local userDB = models.user:new()
+    local username, sitename = util:get_username_and_sitename(params.url)
+    if not username then return errors:wrap(nil) end
+
+    if userDB:is_locked({username = username}) then
+        errors:raise(403, "该帐号已被封禁")
+    end
+
+    local page = {url = params.url}
+    self:db():findOne({["+url"]={page.url}}, resume)
+    local err, result = yield()
+    if (not result) then errors:raise(404, "page not found") end
+
+    visitCount = (result.visitCount or 0) + 1
+    self:db():updateOne({["+url"] = {page.url}}, {visitCount = visitCount}, resume)
+    err, result = yield()
+    result = {visitCount = result.visitCount}
+    return errors:wrap(err, result)
+end
+
+
+function pages:api_getDetail(params)
+    local required_fields = {"url", "visitor"}
+    local params_error, message = validators.required_fields_validator(params, required_fields)
+    if (params_error) then errors:raise(400, message) end
+
+    local userDB = models.user:new()
+    local username, sitename = util:get_username_and_sitename(params.url)
+    if not username then return errors:wrap(nil, {}) end
+
+    if userDB:is_locked({username = username}) then
+        errors:raise(403, "该帐号已被封禁")
+    end
+
+    local page = {url = params.url, visitor = params.visitor}
+    self:db():findOne({["+url"] = {page.url}}, resume)
+    local err, result = yield()
+    if (not result) then errors:raise(404, "page not found") end
+
+    result = result or {}
+    local stars = models.pages_stars:new()
+    local starredCount_and_starred = stars:get_starred_count_of_a_page(page)
+    result = {
+        url = page.url,
+        starredCount = starredCount_and_starred.starredCount,
+        starred = starredCount_and_starred.starred,
+        tags = result.tags or {},
+        visitCount = result.visitCount or 0,
+    }
+    return errors:wrap(err, result)
+end
+
+
+function pages:api_delete(params)
+    self:ensureAuthenticated()
+    self:check_identity(params)
+    local page = self:delete_validator(params)
+
+    self:db():findOne({["+url"] = {page.url}}, resume)
+    local err, result = yield()
+    if (result) then
+        params.id = result._id
+        local stars = models.pages_stars:new()
+        local err, result = stars:delete_page(page)
+        if (not err) then
+            self:delete_in_es(params)
+            self:db():deleteOne({url = page.url}, resume)
+            err, result = yield()
+        end
+    end
+    return errors:wrap(err, result)
+end
+
+
+function pages:delete_validator(params)
+    local clean_data = {}
+    local required_fields = {"url"}
+    local params_error, message = validators.required_fields_validator(params, required_fields)
+    if (params_error) then errors:raise(400, message) end
+    clean_data = {url = params.url}
+    return clean_data
+end
+
+
+function pages:delete_website(params)
+    -- ensureAuthenticated()
+    local site = self:delete_website_validator(params)
+    local site_url = self:get_site_url(params)
+    local stars = models.pages_stars:new()
+    local err, result = stars:delete_website({siteUrl = site_url})
+    local pages = {}
+
+    self:db():count({siteUrl= site_url}, resume)
+    local err, count = yield()
+    if (count > 0) then
+        self:db():find({_id={gt=0, limit=100000}, siteUrl= site_url}, resume)
+        err, pages = yield()
+    end
+
+    if (not err) then
+        self:db():delete({siteUrl = site_url}, resume)
+        err, result = yield()
+        self:delete_website_in_es(pages)
+    end
+    return err, result
+end
+
+
+function pages:delete_website_validator(params)
+    local clean_data = {}
+    local required_fields = {"username", "sitename"}
+    local params_error, message = validators.required_fields_validator(params, required_fields)
+    if (params_error) then errors:raise(400, message) end
+
+    clean_data = {
+        username = params.username,
+        sitename = params.sitename,
+    }
+    return clean_data, params_error, message
+end
+
+
+function pages:insert_to_es(params)
+    local username, sitename = self:get_username_and_sitename(params.url)
+    if (not sitename) then return nil end
+    local pagename = string.gsub(params.url, format("/%s/%s/", username, sitename), "")
+
+    local visibility, message = self:get_visibility(username, sitename)
+    if message then errors:raise(400, message) end
+    local source_url = self:get_source_url(username, sitename, pagename)
+
+    local page = {
+        type = "pages",
+        id = params.id,
+        username = username,
+        sitename = sitename,
+        pagename = pagename,
+        url = params.url,
+        tags = params.tags or {},
+        content = self:md_to_string(params.content) or "",
+        update_time = datetime(),
+        visibility = visibility,
+        source_url = source_url,
+    }
+
+    es:insertOne(page, function(err, data) end)
+end
+
+
+function pages:update_to_es(params)
+    local username, sitename = self:get_username_and_sitename(params.url)
+    if (not sitename) then return nil end
+
+    local page = {
+        type = "pages",
+        id = params.id,
+        tags = params.tags,
+        content = self:md_to_string(params.content),
+        update_time = datetime(),
+    }
+    es:updateOne(page, function(err, data) end)
+end
+
+
+function pages:md_to_string(content)
+    return content
+end
+
+
+function pages:delete_in_es(params)
+    local page = {
+        type = "pages",
+        id = params.id,
+    }
+    es:deleteOne(page, function(err, data) end)
+end
+
+
+function pages:delete_website_in_es(pages)
+    local bulk_data = ""
+    for i, page in ipairs(pages) do
+        bulk_data = bulk_data .. format('{"delete":{"_id":"%d"}}', page._id) .. "\n"
+    end
+    return es:bulk({data = bulk_data, type = "pages"}, function(err, data) end)
+end
+
+
+function pages:api_search(params)
+    local clean_params = self:search_validator(params)
+    local err, search_result = es:search(clean_params)
+    local rcode = search_result.rcode
+    local wrapped_result = {}
+    if (rcode == 200) then
+        wrapped_result = self:wrap_search_result(search_result)
+    else
+        wrapped_result = search_result.data
+    end
+    return errors:wrap(err, wrapped_result)
+end
+
+
+function pages:search_validator(params)
+    local clean_data = {}
+    local required_fields = {"q"}
+    local params_error, message = validators.required_fields_validator(params, required_fields)
+    if (params_error) then errors:raise(400, message) end
+    local fields = {'tags', 'content', 'username', 'sitename', 'pagename'}
+
+    clean_data = {
+        type = "pages",
+        fields = fields,
+        page = tonumber(params.page) or 1,
+        size = tonumber(params.size) or 500,
+        sort = params.sort,
+        highlight = tonumber(params.highlight) or 1,
+        pre_tags = {"<span>"},
+        post_tags = {"</span>"},
+    }
+
+    clean_data.body = {
+        query = {
+            bool = {
+                should = {
+                    {
+                        multi_match = {
+                            query = params.q,
+                            fields = fields,
+                            fuzziness = "AUTO",
+                        }
+                    }
+                },
+                must_not = {
+                    {match = {visibility = "private"}}
+                }
+            }
+        }
+    }
+
+    if (params.username) then clean_data.post_filter =  {term={username=params.username}} end
+    if (clean_data.size > 500) then clean_data.size = 500 end
+    return clean_data
+end
+
+
+function pages:wrap_search_result(result)
+    local wrapped_result = {}
+    local rcode = result.rcode
+
+    wrapped_result = {
+        timed_out = result.data.timed_out,
+        took = result.data.took,
+        total = result.data.hits.total,
+        status = rcode
+    }
+
+    local hits = {}
+    for i, hit in ipairs(result.data.hits.hits) do
+        hit._source.highlight = hit.highlight
+        hit._source.content = nil
+        hit._source.update_time = nil
+        hit._source.visibility = nil
+        hits[#hits + 1] = hit._source
+    end
+
+    wrapped_result.hits = hits
+    return wrapped_result
+end
+
+
+function pages:update_visibility_to_es(params)
+    local site_url = self:get_site_url(params)
+    local pages = {}
+    self:db():count({siteUrl= site_url}, resume)
+    local err, count = yield()
+    if (count > 0) then
+        self:db():find({siteUrl=site_url, _id={gt=0,limit=99999}}, resume)
+        err, pages = yield()
+    end
+
+    local bulk_data = ""
+    for i, page in ipairs(pages) do
+        bulk_data = bulk_data .. format('{"update":{"_id":"%d"}}', page._id) .. "\n"
+        bulk_data = bulk_data .. format('{"doc":{"visibility":"%s"}}', params.visibility) .. "\n"
+    end
+    es:bulk({data=bulk_data,type="pages"}, function(err, data) end)
+end
+
+
+function pages:get_source_url(username, sitename, pagename)
+    local source_url, message
+    local git_server_config = util:getGitServerConfig()
+    local git_host = git_server_config["host"]
+    local site_data_sourceDB = models.site_data_source:new()
+
+    site_data_sourceDB:db():findOne({
+        ["+username+sitename"]={username, sitename}}, resume)
+    local err, data_source = yield()
+
+    if not data_source then
+        message = "the data source of this website does not exist"
+    else
+        source_url = format(
+            "%s/api/v4/projects/%s/repository/files/%s/%s/%s.md?ref=master",
+            git_host,
+            data_source.projectId,
+            username,
+            sitename,
+            pagename
+        )
+    end
+    return source_url, message
+end
+
+
+function pages:get_visibility(username, sitename)
+    local website_model = models.website:new()
+    local visibility, message
+    website_model:db():findOne({["+username+sitename"]={username, sitename}}, resume)
+    local err, site = yield()
+    if site then
+        visibility = site.visibility or "public"
+    else
+        message = "this website does not exist"
+    end
+    return visibility, message
+end
+
+
+function pages:api_migrate(params)
+    local message
+    local passwd = KEEPWORK["config"][CURRENT_ENV]["wiki"]["scripts"]["passwd"]
+    if not params.passwd then message =  "please input your password" end
+    if params.passwd ~= passwd then message =  "incorrect password" end
+    if message then errors:raise(401, message) end
+
+    local results = {}
+    local has_errors = false
+    local status_code = 200
+    for i, file in ipairs(params.files) do
+        local status = 200
+        local message= self:migrate_one(file)
+        if message ~= "created" and message ~= "updated" then
+            has_errors = true
+            status = 400
+        end
+        local result = {
+            url = file.url,
+            message = message or "no message",
+            status = status,
+        }
+        results[#results + 1] = result
+    end
+    if has_errors then status_code = 400 end
+    return response:status(status_code):send({results=results})
+end
+
+
+function pages:migrate_one(params)
+    local source_url, message = self:get_source_url(
+        params.username, params.sitename, params.pagename)
+    if message then return message end
+
+    self:db():findOne({["+url"]={params.url}}, resume)
+    local err, exist_page = yield()
+    if not exist_page then
+        local site_url = self:get_site_url(params)
+        self:db():insertOne({["+url"] = {params.url}},
+            {url = params.url, siteUrl = site_url},
+            resume)
+        local err, result = yield()
+        if result then
+            local visibility, message = self:get_visibility(
+                params.username, params.sitename)
+            if message then return message end
+            es:insertOne({
+                type = "pages",
+                id = result._id,
+                username = params.username,
+                sitename = params.sitename,
+                pagename = params.pagename,
+                url = params.url,
+                tags = params.tags or {},
+                content = self:md_to_string(params.content) or "",
+                update_time = datetime(),
+                visibility = visibility,
+                source_url = source_url,
+            })
+        end
+        message = "created"
+    else
+        es:updateOne({
+            type = "pages",
+            id = exist_page._id,
+            source_url = source_url,
+            content = self:md_to_string(params.content) or "",
+        })
+        message = "updated"
+    end
+    return message
+end
+
+
+function pages:api_fixProfilePages(params)
+    local errMsg = util:check_script_password(params)
+    if errMsg then errors:raise(400, errMsg) end
+
+    local userDB = models.user:new()
+    userDB:db():find({_id={gt=-1, limit=9999999}}, resume)
+    local err, users = yield()
+
+    for i, user in ipairs(users) do
+        local url = "/" .. user.username
+        self:db():findOne({url=url}, resume)
+        local err, page = yield()
+
+        if not page then
+            self:db():insertOne({["+url"]={url}}, {url=url}, resume)
+            local err, result = yield()
+        end
+    end
+
+    return errors:wrap(nil)
+end

@@ -4,14 +4,38 @@
 
 define([
     'jquery',
+    'markdown-it',
     "js-base32",
     "helper/errTranslate"
-], function ($, jsbase32, errTranslate) {
+], function ($, markdown_it, jsbase32, errTranslate) {
     var util = {
         stack:[],   // 堆栈操作模拟
         id:0,       // ID产生器 局部唯一性
         lastUrlObj:{}, // 记录最近一次URL信息
+        urlRegex: /(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9]\.[^\s]{2,})/,
     };
+
+    util.subMarkdownRender = (function() {
+        var md = new markdown_it({
+            html: true,
+            langPrefix: 'code-'
+        });
+        return function(text) {
+            return md.render(text);
+        }
+    })();
+
+    util.setImgBackground = (function(){
+        var background = {
+            "background-size"     : "cover",
+            "background-position" : "center center",
+        };
+
+        return function(text){
+            background['background-image'] = 'url(' + text + ')';
+            return background;
+        }
+    })();
 
     util.getId = function () {
         this.id = this.id > 1000000 ? 0 : this.id+1;
@@ -214,6 +238,25 @@ define([
         this.stack.push(obj);
     }
 
+    util.arrayFrom = function(obj) {
+        if(Array.isArray(obj)) return obj;
+        var result = [];
+        for(var i in obj) result[i] = obj[i];
+        return result;
+    }
+
+    //get the first available number from number list
+    util.getFirstAvailableNumber = function(numbers) {
+        var list = Array.isArray(numbers) ? numbers : arguments;
+        for(var i in list) {
+            //if list[i] looks like a number, '1', 1, 0, '.3'
+            if (+list[i] == list[i] && list[i]!=='' && typeof list[i] !== 'boolean') {
+                return +list[i]
+            }
+        }
+        return 0;
+    }
+
     util.pop = function () {
         return this.stack.pop();
     }
@@ -273,7 +316,7 @@ define([
             //console.log(data);
             // debug use by wxa
             if (!data || !data.error) {
-                console.log(obj.url, data);
+                // console.log(obj.url, data);
                 errorCallback && errorCallback(data);
 				return;
             }
@@ -281,13 +324,13 @@ define([
                 //console.log(data.data);
                 callback && callback(data.data);
             } else {
-                console.log(obj.url, data);
+                // console.log(obj.url, data);
                 data.error && (data.error.message = errTranslate(data.error.message));
                 errorCallback && errorCallback(data.error);
             }
             //Loading.hideLoading();
         }).catch(function (response) {
-            console.log(response);
+            // console.log(response);
             //Loading.hideLoading();
             // 网络错误
             errorCallback && errorCallback( errTranslate(response.data) );
@@ -340,7 +383,7 @@ define([
     }
 
     util.goUserSite = function (url, isOpen) {
-        url = "http://" + config.apiHost + url;
+        url = config.httpProto + "://" + config.apiHost + url;
         if (isOpen) {
             window.open(url);
         } else {
@@ -365,7 +408,7 @@ define([
         if (config.islocalWinEnv()) {
             url = config.frontEndRouteUrl + '#' + url;
         } else if (url.indexOf('://') < 0){
-            url = "http://" + config.apiHost + url;
+            url = config.httpProto + "://" + config.apiHost + url;
         }
 
         if (isOpen) {
@@ -491,7 +534,7 @@ define([
     }
     // 驼峰转下划线
     util.humpToSnake = function (str) {
-		console.log(str);
+		// console.log(str);
         if (!str) {
             return str;
         }
@@ -521,7 +564,7 @@ define([
 			if (key_value.length > 0) {
 				result[key_value[0]] = key_value[1] || "";
 				if (decode) {
-					console.log(result[key_value[0]]);
+					// console.log(result[key_value[0]]);
 					result[key_value[0]] = decodeURIComponent(result[key_value[0]]);
 				}
 			}
@@ -568,6 +611,36 @@ define([
 	util.base32Decode = function(str) {
 		return base32.decode(str);
 	}
+
+    //合并参数
+    util.mergeParams = function(otherObj, thisObj){
+        var Oparams_template = otherObj.params_template;
+        var Tparams_template = thisObj.params_template;
+
+        for(itemA in Tparams_template){
+            for(itemB in Oparams_template){
+                if(itemA != itemB){
+                    Tparams_template[itemB] = Oparams_template[itemB];
+                }
+            }
+        }
+    }
+
+    /** 
+     * @param {Object} date 当前时间，Sun Feb 11 2018 10:38:15 GMT+0800 (中国标准时间)
+     * @param {String} joinStr 可选，year、month、day之间的连字符，默认为"-"
+     * @return {String} year + "joinStr" + month + "joinStr" + day
+    */
+    util.formatDate = function(date, joinStr){
+        date = date || new Date();
+        joinStr = joinStr || "-";
+        var month = "" + (date.getMonth() + 1),
+            day = "" + date.getDate(),
+            year = date.getFullYear();
+        month = (month.length < 2) ? ("0" + month) : month;
+        day = (day.length < 2) ? ("0" + day) : day;
+        return [year, month, day].join(joinStr);
+    }
 
     config.util = util;
     return util;

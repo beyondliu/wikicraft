@@ -13,12 +13,12 @@ define([
 ], function (app, util, storage, sensitiveWord, markdownit, htmlContent, editWebsiteHtmlContent) {
     var controller = ['$rootScope','$scope', '$sce', 'Account', 'Message', function ($rootScope, $scope, $sce, Account, Message) {
         const GITLAB = {
-            "API_BASE_URL": "http://git.keepwork.com/api/v4",
+            "API_BASE_URL": config.keepworkOfficialGitHost + "/api/v4",
             "FILE_PATH": "official%2Ftemplate%2FwebTemplateConfig%2Emd",// 网站模板配置保存路径
             "REF": "master",
             "PRIVATE_TOKEN": "Gsx7JYVFxvsDod2MY2x5",
             "ID": "6803"
-        };
+        }
         $scope.website = {};
         $scope.websiteNameErrMsg = "";
         $scope.websiteDomainErrMsg = "";
@@ -37,10 +37,10 @@ define([
             };
             var isShowLoading = true;
             util.http("GET", url, params, function (result) {
-                console.log(result);
+                // console.log(result);
                 // return result;
             }, function (result) {
-                console.log(result);
+                // console.log(result);
                 if (result.content == undefined || result.message){
                     errcb && errcb();
                     return;
@@ -179,7 +179,7 @@ define([
                     $scope.prevStepDisabled = false;
                     $scope.nextStepDisabled = false;
                 }, function () {
-                    console.log("创建失败，请稍后重试...");
+                    // console.log("创建失败，请稍后重试...");
                     $scope.prevStepDisabled = false;
                     $scope.nextStepDisabled = false;
                 });
@@ -207,6 +207,7 @@ define([
         };
 
         function initSiteStyle(siteStyle) {
+          console.log(siteStyle);
             $scope.categories = siteStyle;
             $scope.templates = $scope.categories[0].templates;
             $scope.styles = $scope.templates[0].styles;
@@ -229,7 +230,7 @@ define([
             };
             var isShowLoading = true;
             util.http("GET", url, params, function (result) {
-                console.log(result);
+                // console.log(result);
             }, function (result) {
                 if (!result.content){
                     return;
@@ -241,7 +242,7 @@ define([
                     var siteStyle = angular.fromJson(parserContent);
                     initSiteStyle(siteStyle);
                 }catch (e){
-                    console.log(e);
+                    // console.log(e);
                 }
             }, isShowLoading);
         }
@@ -250,7 +251,7 @@ define([
             if (!$scope.categories || $scope.categories.length <= 0){
                 getSiteStyle();
             }else{
-                console.log($scope.categories);
+                // console.log($scope.categories);
             }
 
             if((util.getPathname() !="/wiki/user_center")){
@@ -371,7 +372,7 @@ define([
 
             sensitiveWord.getAllSensitiveWords($scope.website.name).then(function(results) {
                 var isSensitive = results && results.length;
-                isSensitive && console.log("包含敏感词:" + results.join("|"));
+                // isSensitive && console.log("包含敏感词:" + results.join("|"));
                 doCheckWebsiteName(isSensitive);
             });
 

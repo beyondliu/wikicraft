@@ -15,7 +15,7 @@ define([
     }
 
 	function filenameEncode(str) {
-				
+
 	}
 
 	function filenameDecode(str) {
@@ -23,6 +23,9 @@ define([
 	}
 
     app.factory('gitlab', ['$http', function ($http) {
+        var getRawBaseUrl = function(){
+            return "https://" + config.serverConfig.gitServerHost
+        }
         var gitlab = {
             inited: false,                                          // is already init
             username: '',   // gitlab 用户名                        // gitlab username
@@ -30,8 +33,8 @@ define([
             projectId: undefined,                                  // project id
             projectName: 'keepworkdatasource',                   // repository name
 			projectMap:{},                                      // 项目列表
-            apiBaseUrl: 'http://git.keepwork.com/api/v4',     // api base url
-            rawBaseUrl: 'http://git.keepwork.com',              // raw base url
+            rawBaseUrl: getRawBaseUrl(),              // raw base url
+            apiBaseUrl: getRawBaseUrl() + "/api/v4",     // api base url
             rootPath: '',                                           // 根路径
             httpHeader: {},
         };
@@ -47,6 +50,7 @@ define([
                 skipAuthorization: true,  // 跳过插件satellizer认证
 				isShowLoading:data.isShowLoading == undefined ? true : data.isShowLoading,
             };
+
 
             data = data || {};
             data.per_page = 100;
@@ -123,9 +127,9 @@ define([
 		// groups
 		// get group list
 		gitlab.getGroupList = function (params, cb, errcb) {
-			var self = this;			
+			var self = this;
 			var url = '/groups';
-			
+
 			self.httpRequest("GET", url, {owned:true, isFetchAll:true, search:params.search}, function(data){
 				for (var i = 0; i < (data || []).length; i++) {
 					//data[i].name = data[i].name.substring((self.username+'_group_').length);
@@ -150,20 +154,20 @@ define([
 					//if (data[i].name == params.name) {
 						//return ;
 					//}
-				//}	
-				
+				//}
+
 				//self.httpRequest("POST", url, {
 					//name:groupname,
 					//path:groupname,
 					//visibility: "public",
-					//request_access_enabled: true, 
+					//request_access_enabled: true,
 				//}, cb, errcb)
 			//}, errcb);
 		//}
 		// update group
 		gitlab.upsertGroup = function(params, cb, errcb) {
 			var self = this;
-			var url = '/groups'; 
+			var url = '/groups';
 			var method = "POST";
 			params.path = self.username + "_group_"  + params.name;
 			params.name = params.path;
@@ -188,7 +192,7 @@ define([
 		gitlab.getGroupMemberList = function(params, cb, errcb) {
 			var self = this;
 			var url = '/groups/' + params.id + '/members';
-			
+
 			self.httpRequest("GET", url, params, function(data){
 				for (var i = 0; i < (data || []).length; i++) {
 					var user = data[i];
@@ -280,6 +284,11 @@ define([
             }, errcb);
         }
 
+		gitlab.getSingleCommit = function(data, cb, errcb) {
+            var url = '/projects/' + this.projectId + '/repository/commits/' + data.sha;
+			this.httpRequest("GET", url, data, cb, errcb);
+		}
+
         // commit
         gitlab.listCommits = function (data, cb, errcb) {
             //data.ref_name = data.ref_name || 'master';
@@ -334,6 +343,16 @@ define([
             });
         }
 
+		gitlab.getFile = function(params, cb, errcb) {
+            var self = this;
+            params.path = self.getLongPath(params).substring(1);
+            var url = self.getFileUrlPrefix() + _encodeURIComponent(params.path);
+            params.ref = params.ref || self.lastCommitId;
+            self.httpRequest("GET", url, params, function (data) {
+                data.content = data.content && Base64.decode(data.content);
+                cb && cb(data);
+            }, errcb);
+		}
         // 获取文件
         gitlab.getContent = function (params, cb, errcb) {
             var self = this;
@@ -354,7 +373,10 @@ define([
 			var apiurl = self.getRawContentUrlPrefix(params);
 			//console.log(apiurl);
             var _getRawContent = function () {
-				if (self.apiBaseUrl.indexOf("git.keepwork.com") > 0) {
+				if (
+          // what the hell is this?
+          self.apiBaseUrl.indexOf(".keepwork.com/git/") > 0
+        ) {
 					$http({
 						method: 'GET',
 						url: apiurl,
@@ -384,7 +406,7 @@ define([
 						//type:"GET",
 						//data:{
 							//ref:self.lastCommitId,
-						//}, 
+						//},
 						//beforeSend:function(request, statu, xhr) {
 							//request.setRequestHeader("PRIVATE-TOKEN", self.dataSourceToken);
 						//},
@@ -451,14 +473,15 @@ define([
             if (content.length > 1) {
                 var imgType = content[0];
                 content = content[1];
-                imgType = imgType.match(/image\/([\w]+)/);
-                imgType = imgType && imgType[1];
+                imgType = imgType.match(/(image|video)\/([\w]+)/);
+                imgType = imgType && imgType[2];
                 if (imgType) {
                     path = path + '.' + imgType;
                 }
             } else {
                 content = content[0];
             }
+            console.log(path);
             //console.log(content);
             self.writeFile({
                 path: path,
@@ -467,10 +490,36 @@ define([
                 encoding: 'base64',
 				isShowLoading: params.isShowLoading || false,
             }, function (data) {
-				//var imgUrl = self.getRawContentUrlPrefix({sha:"master"}) + '/' + data.file_path + (self.dataSource.visibility  == "private" ? ("?private_token=" + self.dataSource.dataSourceToken) : ""); 
-				var imgUrl = self.getRawContentUrlPrefix({sha:"master", path:path, token:"visitortoken"}); 
+				//var imgUrl = self.getRawContentUrlPrefix({sha:"master"}) + '/' + data.file_path + (self.dataSource.visibility  == "private" ? ("?private_token=" + self.dataSource.dataSourceToken) : "");
+				var imgUrl = self.getRawContentUrlPrefix({sha:"master", path:path, token:"visitortoken"});
                 cb && cb(imgUrl);
             }, errcb);
+        }
+
+        // 获得文件列表
+        gitlab.getImageList = function (cb, errcb) {
+            var self = this;
+            var url = '/projects/' + self.projectId + '/repository/tree';
+            var path = '/'+ self.dataSource.username +'_images'
+
+            var params = {};
+            params.path = path.substring(1);
+            params.recursive = false
+            params.isFetchAll = true;
+            self.httpRequest("GET", url, params, function (data) {
+                // console.log('gitlab.getImageList: ', data);
+                data && data.forEach && data.forEach(function(item) {
+                    item.url = self.getRawContentUrlPrefix({sha:"master", path:'/'+item.path, token:"visitortoken"})
+                });
+                cb && cb(data);
+            }, errcb);
+        }
+
+        gitlab.removeImage = function (url, cb, errcb) {
+            var self = this;
+            var path_partials = url.split('/');
+            var path = '/' + path_partials.splice(path_partials.length - 2, 2).join('/');
+            self.deleteFile({path: path}, cb, errcb);
         }
 
 		gitlab.uploadFile = function(params, cb, errcb) {
@@ -513,8 +562,8 @@ define([
             self.username = dataSource.dataSourceUsername;
             self.httpHeader["PRIVATE-TOKEN"] = dataSource.dataSourceToken;
 			self.dataSourceToken = dataSource.dataSourceToken;
-            self.apiBaseUrl = dataSource.apiBaseUrl;
-            self.rawBaseUrl = dataSource.rawBaseUrl || "http://git.keepwork.com";
+            //self.apiBaseUrl = dataSource.apiBaseUrl;
+            //self.rawBaseUrl = dataSource.rawBaseUrl || getRawBaseUrl();
             // 移到站点中
 			self.rootPath = dataSource.rootPath || '';
             self.lastCommitId = dataSource.lastCommitId || "master";
@@ -527,11 +576,11 @@ define([
 			self.keepworkSitename = dataSource.sitename;
 
             if (!dataSource.dataSourceUsername || !dataSource.dataSourceToken || !dataSource.apiBaseUrl || !dataSource.rawBaseUrl) {
-                console.log("gitlab data source init failed!!!");
+                // console.log("gitlab data source init failed!!!");
                 errcb && errcb();
                 return;
             }
-			
+
 			if (dataSource.isInited || dataSource.projectId) {
 				//self.getLastCommitId(function(lastCommitId){
 					//lastCommitId && (self.lastCommitId = lastCommitId);
@@ -572,9 +621,9 @@ define([
 						push_events: true,
 						enable_ssl_verification: false,
 					}, function () {
-						console.log("webhook create success");
+						// console.log("webhook create success");
 					}, function () {
-						console.log("webhook create failed");
+						// console.log("webhook create failed");
 					});
 				}
 			}, function () {
@@ -602,7 +651,7 @@ define([
 			var projectName = params.projectName;
 			var visibility = params.visibility;
 			self.projectName = projectName;
-		
+
 			var successCallback = function(params) {
 				self.projectId = params.projectId;
 				self.projectMap[projectName] = {
@@ -619,7 +668,7 @@ define([
 					self.lastCommitId = lastCommitId;
 				});
 
-				cb && cb();	
+				cb && cb();
 				return;
 			}
 
@@ -663,7 +712,7 @@ define([
 					method = "PUT";
 					url += "/" + project.id;
 					data.id = project.id;
-					
+
 					// 不存在则创建项目 存在更新
 					self.httpRequest(method, url, data, function (project) {
 						//console.log(project);

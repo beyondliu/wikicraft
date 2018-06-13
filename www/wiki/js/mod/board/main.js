@@ -32,7 +32,7 @@
 
             var ui = new Board(new Editor(urlParams['chrome'] == '0', themes), document.querySelector("#mx-client"));
 
-            if (data && data.length > 0 && data.replace(/[\ \r\n]+/g, "") != "blank") {
+            if (data && data.replace(/[\ \r\n]+/g, "").length > 0 && data.replace(/[\ \r\n]+/g, "") != "blank") {
                 doc = ui.editor.graph.getDecompressData(data);
 
                 ui.editor.setGraphXml(doc.documentElement);
@@ -92,26 +92,28 @@
 
     function registerController(wikiBlock) {
         app.registerController("boardController", ['$scope', '$uibModal', '$sce', function ($scope, $uibModal, $sce) {
-            if (wikiBlock.editorMode) {
-                $scope.mxClientEdit = true;
+			function init() {
+                wikiBlock.modParams = wikiBlock.blockCache.wikiBlock.modParams;
 
-                if (typeof(wikiBlock.modParams) == "string" && wikiBlock.modParams.length == 0 || wikiBlock.modParams.replace(/[\ \r\n]+/g, "") == "blank") {
-                    $scope.mxClientStart = true;
-                    $scope.startNotice   = "点击此处开始编辑";
-                    $scope.$apply();
-                } else {
-                    initPreview(wikiBlock, function (svg) {
-                        $scope.preview = $sce.trustAsHtml(svg);
-                        $scope.$apply();
-                    });
-                    
-                }
-            } else {
-                initPreview(wikiBlock, function (svg) {
-                    $scope.preview = $sce.trustAsHtml(svg);
-                    $scope.$apply();
-                });
+				if (wikiBlock.editorMode) {
+					$scope.mxClientEdit = true;
+					
+					initEditMode();
+				} else {
+					initPreview(wikiBlock, function (svg) {
+						$scope.preview = $sce.trustAsHtml(svg);
+						util.$apply();
+					});
+				}
             }
+            
+            init();
+
+			wikiBlock.init({scope:$scope});
+			$scope.onParamsChange = function() {
+				init();
+				util.$apply();
+			}
 
             $scope.edit = function () {
                 if (!wikiBlock.editorMode) {
@@ -119,41 +121,73 @@
                 }
 
                 $uibModal.open({
-                    "animation"      : true,
+                    "animation"      : false,
                     "ariaLabeledBy"  : "title",
                     "ariaDescribedBy": "body",
                     "template"       : "<div id='mx-client'><div class='mx-client-close' ng-click='close()'>关闭</div></div>",
-                    "controller"     : "mxController",
+                    "controller"     : "boardEditorController",
                     "size"           : "lg",
                     "openedClass"    : "mx-client-modal",
                     "backdrop"       : "static",
                     "keyboard"       : false,
+                    "resolve"        : {
+                        "wikiBlock" : function(){
+                            return wikiBlock;
+                        }
+                    }
                 })
-                .result.then(function () {
-                    var compressData = $scope.ui.getCurrentCompressData();
+                .result.then(function (ui) {
+                    var compressData = ui.getCurrentCompressData();
 
                     if(compressData){
                         wikiBlock.applyModParams(compressData);
+                        wikiBlock.modParams = compressData;
                     }else{
                         wikiBlock.applyModParams("blank");
+                        wikiBlock.modParams = "blank";
                     }
-                }, function (params) {
-                    
-                });
 
+                    initEditMode();
+                }, function (params) {});
+            };
+
+            function initEditMode(){
+				if (typeof(wikiBlock.modParams) != "string") {
+					wikiBlock.modParams = "";
+				}
+                var modParams = wikiBlock.modParams.replace(/[\ \r\n]+/g, "");
+                
+                if (typeof(modParams) == "string" && modParams.length == 0 || modParams == "blank") {
+                    $scope.mxClientStart = true;
+                    $scope.startNotice   = "点击此处开始编辑";
+                    $scope.preview = "";
+                    util.$apply();
+                } else {
+                    $scope.mxClientStart = false;
+                    initPreview(wikiBlock, function (svg) {
+                        $scope.preview = $sce.trustAsHtml(svg);
+                        util.$apply();
+                    });
+                }
+            }
+        }])
+
+        app.registerController("boardEditorController", ['$scope', '$uibModalInstance', 'wikiBlock', function ($scope, $uibModalInstance, wikiBlock) {           
+            $scope.close = function () {
+                $uibModalInstance.close($scope.ui);
+            }
+
+            $scope.$watch('$viewContentLoaded', function(){
                 setTimeout(function () {
+					if (typeof(wikiBlock.modParams) != "string") {
+						wikiBlock.modParams = "";
+					}
                     initEditor(wikiBlock.modParams, function (ui) {
                         $scope.ui = ui;
                         $scope.$apply();
                     });
-                }, 500)
-            };
-        }])
-
-        app.registerController("mxController", ['$scope', '$uibModalInstance', function ($scope, $uibModalInstance) {
-            $scope.close = function () {
-                $uibModalInstance.close();
-            }
+                }, 0)
+            });
         }]);
     }
 

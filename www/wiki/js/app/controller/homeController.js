@@ -12,9 +12,9 @@ define([
     'text!html/articles/featurelist.md',
 ], function (app, util, markdownwiki, storage, dataSource, htmlContent, featureListContent) {
     // 动态加载
-    app.controller('homeController', ['$scope', '$rootScope', '$auth', '$sce', 'Account', 'Message', function ($scope, $rootScope, $auth, $sce, Account, Message) {
+    app.controller('homeController', ['$scope', '$rootScope', '$auth', '$sce', '$translate', 'Account', 'Message', function ($scope, $rootScope, $auth, $sce, $translate, Account, Message) {
 		$scope.keepPassword = storage.localStorageGetItem("keepPassword");
-
+        $scope.isGlobalVersion = config.isGlobalVersion;
         $scope.goUserSite = function (site) {
             util.goUserSite('/' + site.username + '/' + site.name + '/index');
         }
@@ -59,6 +59,7 @@ define([
             //        console.log("-------finish-----------");
             //    });
             // });
+			//Authenticate("facebook"); 
         };
 
         $scope.goRegisterPage = function () {
@@ -117,7 +118,7 @@ define([
             }
 
             util.http("POST", config.apiUrlPrefix + "user/register", params, function (data) {
-                console.log("注册成功")
+                // console.log("注册成功")
                 $auth.setToken(data.token);
                 Account.setUser(data.userinfo);
                 createTutorialSite(data.userinfo, function () {
@@ -127,7 +128,7 @@ define([
 
             }, function (error) {
                 $scope.errMsg = error.message;
-                console.log($scope.errMsg );
+                // console.log($scope.errMsg );
                 $("#total-err").removeClass("visible-hidden");
             });
         };
@@ -179,13 +180,13 @@ define([
             var params = {
                 email: $scope.email.trim(),
             };
-            console.log(params.email);
+            // console.log(params.email);
             if(params.email){
                 util.http("POST", config.apiUrlPrefix + "user/getByEmail", params, function (data) {
                     $("#webName").attr("disabled","disabled");
                     $scope.logining=true;
                 }, function (error) {
-                    console.log(error );
+                    // console.log(error );
                     $scope.logining=false;
                     $("#webName").removeAttr("disabled");
                 });
@@ -213,7 +214,7 @@ define([
 				//storage.sessionStorageSetItem("satellizer_token", data.token);
                 $auth.setToken(data.token);
                 Account.setUser(data.userinfo);
-                console.log("登录成功");
+                // console.log("登录成功");
                 /*
                  if (!data.userInfo.githubToken) {
                  Account.githubAuthenticate();
@@ -233,7 +234,7 @@ define([
 
         function Authenticate(serviceName) {
             Account.authenticate(serviceName, function (data) {
-                //console.log(data);
+				//console.log(data);
                 if ($auth.isAuthenticated()) {
                     Account.setUser(data.data);
                     if ($scope.isModal) {
@@ -252,22 +253,22 @@ define([
             });
         }
         $scope.qqLogin = function () {
-            console.log("QQ登录");
+            // console.log("QQ登录");
             Authenticate("qq");
         }
 
         $scope.wechatLogin = function () {
-            console.log("微信登录");
+            // console.log("微信登录");
             Authenticate("weixin");
         }
 
         $scope.sinaWeiboLogin = function () {
-            console.log("新浪微博登录");
+            // console.log("新浪微博登录");
             Authenticate("xinlangweibo");
         }
 
         $scope.githubLogin = function () {
-            console.log("github登录");
+            // console.log("github登录");
             Authenticate("github");
         }
 

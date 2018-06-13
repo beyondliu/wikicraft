@@ -23,6 +23,9 @@ include_once("./website_template_config.page")
 include_once("./website_domain.page")
 include_once("./site_data_source.page")
 include_once("./site_group.page")
+include_once("./pages.page")
+include_once("./elasticsearch.page")
+include_once("./validators.page")
 
 NPL.load("(gl)script/ide/math/bit.lua")
 
@@ -31,6 +34,11 @@ local website = inherit(models.abstract.base, gettable("models.website"))
 website.db_name = "website"
 -- max items per user
 -- website.max_items_per_user = 10
+
+local es = models.elasticsearch:new()
+local index = CURRENT_ENV .. "_kw_websites"
+es:connect({index=index})
+
 
 function website:ctor()
 	self:addfield("name", "string", false, 30)
@@ -66,6 +74,8 @@ function website:ctor()
 	self:addfield("worksCount", "number")
 	self:addfield("state", "number")
 	self:addfield("sensitiveWordLevel", "number")
+	self:addfield("isTop", "boolean")  -- 是否置顶
+	self:addfield("toppedTime", "string")  -- 置顶时间
 end
 
 -- 创建站点 paracraft 客户端有使用 以后可能废弃  
@@ -79,8 +89,11 @@ function website:api_create(params)
 	params.createDate = ParaGlobal.GetDateFormat("yyyy-MM-dd")
 
 
-	self:db():insertOne({["+username+name"]={params.username, params.name}}, params, resume)	
-	return errors:wrap(yield())
+	self:db():insertOne({["+username+name"]={params.username, params.name}}, params, resume)
+	local err, site = yield()
+	self:insert_to_es(site)
+
+	return errors:wrap(err, site)
 end
 
 function website:api_createSite(params)
@@ -121,6 +134,8 @@ function website:api_createSite(params)
 	if not site then
 		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
 	end
+
+	self:insert_to_es(site)
 
 	local siteDataSourceDB = models.site_data_source:new()
 	siteDataSourceDB:api_createSiteDataSource({username=site.username, sitename=site.sitename, visibility=site.visibility, dataSourceName=userinfo.defaultDataSourceName, isolateDataSource=params.isolateDataSource})
@@ -167,6 +182,8 @@ function website:api_upsert(params)
 		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
 	end
 	
+	self:insert_to_es(site)
+
 	local projectName = nil
 	if params.isolateDataSource == 0 then
 		projectName = const.DEFAULT_DATA_SOURCE_PROJECT_NAME
@@ -201,6 +218,10 @@ function website:api_setVisibility(params)
 	local siteDataSourceDB = models.site_data_source:new()
 	siteDataSourceDB:db():updateOne({["+username+sitename"]={params.username, params.sitename}}, {visibility=params.visibility}, resume)	
 	yield()
+
+	local pages = models.pages:new()
+	pages:update_visibility_to_es(params)
+
 	self:db():updateOne({["+username+name"]={params.username, params.sitename}}, {visibility=params.visibility}, resume)
 	return errors:wrap(yield())
 end
@@ -211,6 +232,8 @@ function website:deleteById(websiteId)
 	if not site then
 		return errors:wrap(nil)
 	end
+
+	self:delete_in_es(site)
 
 	--user_log("删除站点:" .. site.sitename)
 
@@ -243,6 +266,8 @@ function website:deleteById(websiteId)
 	-- 删除页信息
 	--local websitePageinfoDB = models.website_pageinfo:new()
 	--websitePageinfoDB:api_delete({sitename=site.name, userId=site.userId})
+	local pages = models.pages:new()
+	pages:delete_website({username=site.username, sitename=site.name})
 
 	-- 删除该站点的所有域名
 	local websiteDomainDB = models.website_domain:new()
@@ -348,8 +373,10 @@ function website:api_updateByName(params)
 	params.updateDate = ParaGlobal.GetDateFormat("yyyy-MM-dd")
 
 	self:db():updateOne({["+username+name"]={params.username, sitename}}, params, resume)
+	local err, site = yield()
+	self:update_to_es(site)
 
-	return errors:wrap(yield())
+	return errors:wrap(err, site)
 end
 
 -- 获得用户的网站数量
@@ -402,9 +429,33 @@ function website:api_getAllByUsername(params)
 		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
 	end
 
+	local userDB = models.user:new()
+	if userDB:is_locked({username = params.username}) then
+		errors:raise(403, "该帐号已被封禁")
+	end
+
 	self:db():find({["+username"]={params.username, limit=1000}}, resume)
-	
-	return errors:wrap(yield())
+	local err, sites = yield()
+
+	local pages = models.pages:new()
+	local finished_count = 0
+	local url = ""
+	for i, site in ipairs(sites or {}) do
+		site.isTop = site.isTop or false  -- 是否置顶
+		-- 设置网站tags为index的tags
+		url = format("/%s", site.username or "")
+		if (site.sitename) then url = format("%s/%s/index", url, site.sitename) end
+		pages:db():findOne({url = url},
+			function (err, page)
+				page = page or {}
+				site.tags = page.tags or {}
+				finished_count = finished_count + 1
+				if (finished_count == #sites) then resume() end
+			end
+		)
+		if (i == #sites) then yield() end
+	end
+	return errors:wrap(err, sites)
 end
 
 -- 通过站点名获得站点
@@ -426,7 +477,7 @@ function website:api_getById(params)
 
 	self:db():findOne({_id=params.websiteId}, resume)
 
-	return errors:wrap(yield())		
+	return errors:wrap(yield())
 end
 
 -- 更新访问计数
@@ -614,10 +665,18 @@ function website:api_visitWebsite(params)
 	-- 增加站点访问量
 	self:api_updateVisitNum({username=params.username, sitename=params.sitename})
 
+	-- 增加网页访问量
+	local pages = models.pages:new()
+	pages:api_updateVisitCount({url = params.url})
+
 	-- 添加访问记录
 	local userVisitHistoryDB = models.user_visit_history:new()
 	userVisitHistoryDB:api_upsert({username=username, visitUsername=params.username, visitSitename=params.sitename, url=params.url})
 	
+	-- 更新作品的访问记录数
+	local websiteWorksModel = models.website_works:new()
+	websiteWorksModel:api_updateVisitCount({websiteId = params.websiteId, worksUrl = params.url})
+
 	return errors:wrap()
 end
 
@@ -630,9 +689,13 @@ function website:api_getDetailInfo(params)
 	local userDB = models.user:new()
 	local userinfo = userDB:db():findOne({["+username"] = {params.username}}, resume)
 	local _, userinfo = yield()
-	
+
 	if not userinfo or userinfo.roleId == const.USER_ROLE_EXCEPTION then
 		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
+	end
+
+	if userDB:is_locked({user = userinfo}) then
+		errors:raise(403, "该帐号已被封禁")
 	end
 
 	--models.user:new():filterUserInfo(userinfo)
@@ -663,7 +726,14 @@ function website:api_getDetailInfo(params)
 		end
 	end
 
-	self:api_visitWebsite(params)
+	if siteinfo then
+		self:api_visitWebsite({
+			username = params.username,
+			sitename = params.sitename,
+			url = params.url,
+			websiteId = siteinfo._id,
+		})
+	end
 
 	return errors:wrap(nil, {userinfo=userinfo, siteinfo=siteinfo})
 end
@@ -717,22 +787,160 @@ function website:api_getWithDataSourceByName(params)
 end
 
 
+function website:api_setTop(params)
+	ensureAuthenticated()
+	if (not params.username) or (not params.sitename) then
+		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
+	end
+
+	self:db():findOne({["+username+name"] = {params.username, params.sitename}}, resume)
+	local err, site = yield()
+	if (not site) then
+		local message = "website not exist"
+		return response:status(404):send({error={message=message,status=404}})
+	end
+
+	if (not site.isTop) then
+		self:db():count({username = params.username, isTop = true}, resume)
+		local _, topped_sites_count = yield()
+		if (topped_sites_count >= 5) then
+			local message = "the count of topped website over limit "
+			return response:status(404):send({error={message=message,status=404}})
+		end
+		local now = ParaGlobal.GetDateFormat("yyyy-MM-dd ") .. ParaGlobal.GetTimeFormat("H:mm:ss")
+		self:db():updateOne({["+username+name"] = {params.username, params.sitename}},
+			{isTop = true, toppedTime = now}, resume)
+		err, site = yield()
+		if (site) then site = {isTop = site.isTop} end
+	else
+		self:db():updateOne({["+username+name"] = {params.username, params.sitename}},
+			{isTop = false}, resume)
+		err, site = yield()
+		if (site) then site = {isTop = site.isTop} end
+	end
+
+	return errors:wrap(err, site)
+end
 
 
+function website:insert_to_es(params)
+	local website = {
+		type = "websites",
+		id = tonumber(params._id),
+		username = params.username,
+		sitename = params.sitename,
+		url = params.url,
+		desc = params.desc,
+		logoUrl = params.logoUrl,
+		display_name = params.displayName,
+	}
+	es:insertOne(website, function(err, data) end)
+end
 
 
+function website:update_to_es(params)
+	local website = {
+		type = "websites",
+		id = tonumber(params._id),
+		desc = params.desc,
+		logoUrl = params.logoUrl,
+		display_name = params.displayName,
+	}
+	es:updateOne(website, function(err, data) end)
+end
 
 
+function website:delete_in_es(params)
+	local website = {
+		type = "websites",
+		id = tonumber(params._id),
+	}
+	es:deleteOne(website, function(err, data) end)
+end
 
 
+function website:api_search(params)
+	local clean_params, is_params_error, message = self:search_validator(params)
+	if (is_params_error) then
+		return response:status(400):send({error={message=message,status=400}})
+	end
+	local err, search_result = es:search(clean_params)
+	local rcode = search_result.rcode
+	local wrapped_result = {}
+	if (rcode == 200) then
+		wrapped_result = self:wrap_search_result(search_result)
+	else
+		wrapped_result = search_result.data
+	end
+	return errors:wrap(err, wrapped_result)
+end
 
 
+function website:search_validator(params)
+	local validators = models.validators:new()
+	local clean_data = {}
+	local required_fields = {"q"}
+	local is_params_error, message = validators.required_fields_validator(params, required_fields)
+	if (not is_params_error) then
+		clean_data = {
+			type = "websites",
+			q = params.q,
+			fields = {'sitename', 'display_name'},
+			page = tonumber(params.page) or 1,
+			size = tonumber(params.size) or 500,
+			sort = params.sort,
+			highlight = 0,
+			fuzziness = "AUTO",
+		}
+		
+		if (params.username) then
+			clean_data.post_filter = {
+				term = {
+					username = params.username
+				}
+			}
+		end
+		
+		if (clean_data.size > 500) then clean_data.size = 500 end
+	end
+	return clean_data, is_params_error, message
+end
 
 
+function website:wrap_search_result(result)
+	local wrapped_result = {}
+	local err, visitor_info
+	local rcode = result.rcode
 
+	wrapped_result = {
+		timed_out = result.data.timed_out,
+		took = result.data.took,
+		total = result.data.hits.total,
+		status = rcode
+	}
 
+	local hits = {}
+	for i, hit in ipairs(result.data.hits.hits) do
+		hit._source._id = tonumber(hit._id)
+		hits[#hits + 1] = hit._source
+	end
 
+	local finished_count = 0
+	for i, website in ipairs(hits) do
+		self:db():findOne({_id = website._id},
+			function(err, data)
+				finished_count = finished_count + 1
+				if (data) then 
+					website.visitCount = data.visitCount
+					website.favoriteCount = data.favoriteCount
+				end
+				if (finished_count == #hits) then resume() end
+			end
+		)
+		website._id = nil
+		if (i == #hits) then yield() end
+	end
 
-
-
-
+	wrapped_result.hits = hits
+	return wrapped_result
+end

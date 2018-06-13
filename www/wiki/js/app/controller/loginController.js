@@ -4,28 +4,29 @@
 
 define([
     'app',
+    'jquery',
     'helper/util',
     'helper/storage',
     'text!html/login.html'
-], function (app, util, storage,  htmlContent) {
-    app.registerController('loginController', ['$scope', '$auth', 'Account','modal', function ($scope, $auth, Account,modal) {
+], function (app, jQuery, util, storage,  htmlContent) {
+    app.registerController('loginController', ['$scope', '$auth', '$translate', 'Account', 'modal', function ($scope, $auth, $translate, Account, modal) {
         //$scope.errMsg = "用户名或密码错误";
+        $scope.loginDomId = 'loginDomId-' + Date.now()
         $scope.isModal=false;
-		$scope.keepPassword = storage.localStorageGetItem("keepPassword");
+        $scope.isGlobalVersion = config.isGlobalVersion;
+        $scope.keepPassword = storage.localStorageGetItem("keepPassword");
 
-        function init() {
-            if ((!config.localEnv || config.localVMEnv) && window.location.pathname !="/wiki/login" && window.location.pathname !="/wiki/join"){
-                $scope.isModal=true;
-            }
+        $scope.$watch('$viewContentLoaded', function() {
+          setTimeout(function() {
+            $scope.isModal = jQuery('#' + $scope.loginDomId).closest('.modal').length > 0
+          })
+        });
+
+        $scope.changeKeepPassword = function() {
+          //console.log($scope.keepPassword);
+          //Account.keepPassword($scope.keepPassword);
+          storage.localStorageSetItem("keepPassword", $scope.keepPassword);
         }
-
-        $scope.$watch('$viewContentLoaded', init);
-
-		$scope.changeKeepPassword = function() {
-			//console.log($scope.keepPassword);
-			//Account.keepPassword($scope.keepPassword);
-			storage.localStorageSetItem("keepPassword", $scope.keepPassword);
-		}
 
         $scope.goRegisterPage = function () {
             util.go('/wiki/join');
@@ -45,7 +46,7 @@ define([
                 password: util.stringTrim($scope.password),
             };
             if (!params.username || !params.password) {
-                $scope.errMsg = "用户名或密码错误";
+                $scope.errMsg = $translate.instant("用户名或密码错误");
                 $("#total-err").removeClass("visible-hidden");
                 return;
             }
@@ -53,9 +54,9 @@ define([
 				//storage.sessionStorageSetItem("satellizer_token", data.token);
                 $auth.setToken(data.token);
                 Account.setUser(data.userinfo);
-                console.log("登录成功");
+                // console.log("登录成功");
                 if ($scope.isModal) {
-                    $scope.$close(data.userinfo);
+                    window.location.reload();
                 } else {
                     util.go('/' + data.userinfo.username);
                 }
@@ -67,23 +68,31 @@ define([
         }
 
         $scope.qqLogin = function () {
-            console.log("QQ登录");
+            // console.log("QQ登录");
             Authenticate("qq");
         }
 
         $scope.wechatLogin = function () {
-            console.log("微信登录");
+            // console.log("微信登录");
             Authenticate("weixin");
         }
 
         $scope.sinaWeiboLogin = function () {
-            console.log("新浪微博登录");
+            // console.log("新浪微博登录");
             Authenticate("xinlangweibo");
         }
 
         $scope.githubLogin = function () {
-            console.log("github登录");
+            // console.log("github登录");
             Authenticate("github");
+        }
+
+        $scope.facebookLogin = function () {
+          Authenticate("facebook");
+        }
+
+        $scope.googleLogin = function () {
+          Authenticate("google");
         }
 
         $scope.cancel = function () {

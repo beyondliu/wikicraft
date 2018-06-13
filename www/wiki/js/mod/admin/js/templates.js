@@ -10,7 +10,7 @@ define([
     'js-base64',
 ], function (app, util, storage, markdownit, htmlContent) {
     const GITLAB = {
-        "API_BASE_URL": "http://git.keepwork.com/api/v4",
+        "API_BASE_URL": "https://api.keepwork.com/git/api/v4",
         "FILE_PATH": "official%2Ftemplate%2FwebTemplateConfig%2Emd",// 模板配置保存页面 official/template/webTemplateConfig
         "REF": "master",
         "PRIVATE_TOKEN": "Gsx7JYVFxvsDod2MY2x5",
@@ -40,7 +40,7 @@ define([
             };
             var isShowLoading = true;
             util.http("GET", url, params, function (result) {
-                console.log(result);
+                // console.log(result);
             }, function (result) {
                 if (!result.content){
                     return;
@@ -52,13 +52,13 @@ define([
                     $scope.categories = angular.fromJson(parserContent);
                     $scope.activeCategories = $scope.categories[0];
                 }catch (e){
-                    console.log(e);
+                    // console.log(e);
                 }
             }, isShowLoading);
         };
 
         var saveWebsiteTemplates = function (message) {
-            console.log(JSON.stringify($scope.categories));
+            // console.log(JSON.stringify($scope.categories));
             var config = {
                 method: "PUT",
                 url: GITLAB.API_BASE_URL + "/projects/" + GITLAB.ID +"/repository/files/" + GITLAB.FILE_PATH,
@@ -74,20 +74,20 @@ define([
                 isShowLoading: false
             };
             $http(config).then(function (result) {
-                console.log(result);
+                // console.log(result);
                 if (result.status == 200){
                     Message.info("保存成功");
                 }else{
                     Message.danger("保存失败，请将控制台的错误截图给程序员");
-                    console.log(result)
+                    // console.log(result)
                 }
             }).catch(function (err) {
-                console.log(err);
+                // console.log(err);
             });
         };
 
         function init() {
-            console.log("init templates");
+            // console.log("init templates");
             initCategories();
         }
 
@@ -107,13 +107,13 @@ define([
         };
         // 添加新网站模板
         $scope.addTemplate = function (index) {
-            console.log(index);
+            // console.log(index);
             if (index >= 0){
                 $scope.activeCategories.templates[index] = $scope.newTemplate;
                 $("#editTemplateModal").modal("toggle");
             }else{
                 $scope.activeCategories.templates.push($scope.newTemplate);
-                console.log($scope.categories);
+                // console.log($scope.categories);
             }
             saveWebsiteTemplates("addTemplate");
             $scope.newTemplate = {

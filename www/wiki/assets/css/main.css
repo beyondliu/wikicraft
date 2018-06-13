@@ -7,6 +7,8 @@
 @import "../../js/lib/cropper/cropper.min.css";
 @import "../../js/lib/wangEditor/css/wangEditor.min.css";
 @import "../../js/lib/iconFont/iconfont.css";
+@import "../../js/lib/botui/botui.min.css";
+@import "../../js/lib/botui/botui-theme-default.css";
 @import "editor.css";
 @import "markdownit.css";
 @import "theme.css";
@@ -28,6 +30,17 @@ a:hover {
 
 .modal-dialog.modal-full>.modal-content{
     height:100%;
+}
+
+.modal-position-center .modal-dialog {
+    margin: 0 auto;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.modal-position-center .modal-content {
+    margin: 0 auto;
 }
 
 .modal-xxl > .modal-content {
@@ -105,8 +118,27 @@ textarea{
     text-align: center;
     color: #999;
     font-size: 16px;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
 }
 .empty-box .iconfont {
     font-size: 145px;
     line-height: 1;
 }
+
+/*module editor css begin*/
+.kp_module_editor_input_tag {
+
+}
+
+.kp_module_editor_input_tag:hover {
+	background: gray;
+	cursor: pointer;
+}
+
+.kp_wiki_module {
+
+}
+/*module editor css end*/

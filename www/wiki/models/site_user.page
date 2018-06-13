@@ -8,7 +8,10 @@ Date: 2017/06/08
 
 include_once("./abstract/base.page")
 include_once("./group_user.page")
+include_once("./site_group.page")
 include_once("./website.page")
+include_once("./pages.page")
+include_once("./user.page")
 
 local site_user = inherit(models.abstract.base, gettable("models.site_user"))
 site_user.db_name = "site_user"
@@ -26,6 +29,7 @@ end
 
 -- 添加记录
 function site_user:api_upsert(params)
+	params.username = getUsername()
 	if (not params.username) or (not params.sitename) or (not params.memberName) then
 		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
 	end
@@ -92,6 +96,11 @@ function site_user:api_getSiteListByMemberName(params)
 		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
 	end
 
+	local userDB = models.user:new()
+	if userDB:is_locked({username = params.memberName}) then
+		errors:raise(403, "该帐号已被封禁")
+	end
+
 	local limit = 100000
 	self:db():find({["+memberName"]={params.memberName, limit=limit}}, resume)
 	local _, siteUserList = yield()
@@ -100,10 +109,31 @@ function site_user:api_getSiteListByMemberName(params)
 	local result = {}
 	for _, siteUser in ipairs(siteUserList or {}) do
 		if siteUser.username ~= params.memberName then
-			result[#result+1] = {}
-			result[#result]["siteuser"] = siteUser
-			result[#result]["siteinfo"] = websiteDB:api_getWithDataSourceByName({username=siteUser.username, sitename=siteUser.sitename}).data
+			result[#result+1] = {
+				siteuser = siteUser,
+				siteinfo = websiteDB:api_getWithDataSourceByName({username=siteUser.username, sitename=siteUser.sitename}).data
+			}
 		end
+	end
+
+	local pages = models.pages:new()
+	local finished_count = 0
+	local url = ""
+	for i, site in ipairs(result or {}) do
+		site = site.siteinfo or {}
+		site.isTop = site.isTop or false  -- 是否置顶
+		-- 设置网站tags为index的tags
+		url = format("/%s", site.username or "")
+		if (site.sitename) then url = format("%s/%s/index", url, site.sitename) end
+		pages:db():findOne({url = url},
+			function (err, page)
+				page = page or {}
+				site.tags = page.tags or {}
+				finished_count = finished_count + 1
+				if (finished_count == #result) then resume() end
+			end
+		)
+		if (i == #result) then yield() end
 	end
 	
 	return errors:wrap(nil, result)
@@ -113,6 +143,11 @@ end
 function site_user:api_getSiteByName(params)
 	if (not params.username) or (not params.sitename) or (not params.memberName) then
 		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
+	end
+
+	local userDB = models.user:new()
+	if userDB:is_locked({username = params.username}) then
+		errors:raise(403, "该帐号已被封禁")
 	end
 
 	self:db():findOne({["+username+sitename+memberName"]={params.username, params.sitename, params.memberName}}, resume)
@@ -128,18 +163,55 @@ function site_user:api_getSiteByName(params)
 	return errors:wrap(nil, {siteUser=siteUser, siteinfo=siteinfo})
 end
 
+-- 通过成员名获取站点
+function site_user:api_getSiteLevelByMemberName(params)
+	if not params.username or not params.sitename then 
+		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
+	end
 
+	local websiteDB = models.website:new()
+	websiteDB:db():findOne({["+username+name"] = {params.username, params.sitename}}, resume)
+	local err, data = yield()
 
+	if not data then
+		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
+	end
 
+	if data.visibility == "public" then
+		return errors:wrap(nil, 40)
+	end
 
+	if not params.memberName then
+		return errors:wrap(errors.REQUEST_PARAMS_ERROR)
+	end
 
+	self:db():findOne({["+username+sitename+memberName"] = {params.username, params.sitename, params.memberName}}, resume)
+	local err, data = yield()
+	if data then
+		return errors:wrap(nil, data.level or 40)
+	end
+	
+	local limit = 100000
+	local level = 0
+	models.group_user:new():db():find({["+memberName"]={params.memberName, limit=limit}}, resume)
+	local err, groups = yield()
 
+	local siteGroupDB = models.site_group:new()
+	for _, group in ipairs(groups or {}) do
+		siteGroupDB:db():findOne({["+username+sitename+groupUsername+groupname"] = {
+			params.username,
+			params.sitename,
+			group.username,
+			group.groupname,
+		}}, resume)	
+		local err, siteGroup = yield()
 
+		if level < siteGroup.level then
+			level = siteGroup.level
+		end
+	end
 
-
-
-
-
-
+	return errors:wrap(nil, level)
+end
 
 
